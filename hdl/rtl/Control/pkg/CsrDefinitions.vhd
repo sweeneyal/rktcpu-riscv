@@ -1,4 +1,6 @@
-
+library ieee;
+    use ieee.numeric_std.all;
+    use ieee.std_logic_1164.all;
 
 package CsrDefinitions is
     
@@ -8,48 +10,25 @@ package CsrDefinitions is
         marchid   : std_logic_vector(31 downto 0);
         mimpid    : std_logic_vector(31 downto 0);
         mhartid   : std_logic_vector(31 downto 0);
-        mstatus   : std_logic_vector(31 downto 0);
-        mstatush  : std_logic_vector(31 downto 0);
+        mstatus   : std_logic_vector(63 downto 0);
         mtvec     : std_logic_vector(31 downto 0);
-        medeleg   : std_logic_vector(31 downto 0);
-        mideleg   : std_logic_vector(31 downto 0);
         mip       : std_logic_vector(31 downto 0);
         mie       : std_logic_vector(31 downto 0);
 
-        mcycle        : u64_t;
-        minstret      : u64_t;
-        mhpmcounters  : u64_array_t(3 to 31);
-        mhpmevents    : std_logic_matrix_t(3 to 31)(31 downto 0);
-        mcounteren    : std_logic_vector(31 downto 0);
-        mcountinhibit : std_logic_vector(31 downto 0);
+        mcycle       : u64_t;
+        minstret     : u64_t;
+        mhpmcounters : u64_array_t(3 to 31);
+        mhpmevents   : std_logic_matrix_t(3 to 31)(31 downto 0);
         
-        mscratch      : std_logic_vector(31 downto 0);
-        mepc          : std_logic_vector(31 downto 0);
-        mcause        : std_logic_vector(31 downto 0);
-        mtval         : std_logic_vector(31 downto 0);
-        mconfigptr    : std_logic_vector(31 downto 0);
-        menvcfg       : std_logic_vector(63 downto 0);
-        mseccfg       : std_logic_vector(63 downto 0);
+        mscratch   : std_logic_vector(31 downto 0);
+        mepc       : std_logic_vector(31 downto 0);
+        mcause     : std_logic_vector(31 downto 0);
+        mtval      : std_logic_vector(31 downto 0);
+        mconfigptr : std_logic_vector(31 downto 0);
 
-        mtime         : std_logic_vector(63 downto 0);
-        mtimecmp      : std_logic_vector(63 downto 0);
+        mtime    : std_logic_vector(63 downto 0);
+        mtimecmp : std_logic_vector(63 downto 0);
     end record machine_csr_t;
-
-    type supervisor_csr_t is record
-        sstatus : std_logic_vector(31 downto 0);
-        stvec   : std_logic_vector(31 downto 0);
-        sip     : std_logic_vector(31 downto 0);
-        sie     : std_logic_vector(31 downto 0);
-
-        scounteren : std_logic_vector(31 downto 0);
-        sscratch   : std_logic_vector(31 downto 0);
-        sepc       : std_logic_vector(31 downto 0);
-        scause     : std_logic_vector(31 downto 0);
-        stval      : std_logic_vector(31 downto 0);
-        senvcfg    : std_logic_vector(31 downto 0);
-
-        satp : std_logic_vector(31 downto 0);
-    end record supervisor_csr_t;
 
     procedure handle_accesses(
         signal i_priv  : std_logic_vector(2 downto 0); 
@@ -57,7 +36,6 @@ package CsrDefinitions is
         signal i_wen   : std_logic; 
         signal i_ren   : std_logic; 
         signal i_wdata : std_logic_vector(31 downto 0); 
-        signal i_scsr  : supervisor_csr_t; 
         signal i_mcsr  : machine_csr_t; 
         signal o_rdata : std_logic_vector(31 downto 0); 
         signal o_fault : std_logic
@@ -73,7 +51,6 @@ package body CsrDefinitions is
         signal i_wen   : std_logic; 
         signal i_ren   : std_logic; 
         signal i_wdata : std_logic_vector(31 downto 0); 
-        signal i_scsr  : supervisor_csr_t; 
         signal i_mcsr  : machine_csr_t; 
         signal o_rdata : std_logic_vector(31 downto 0); 
         signal o_fault : std_logic
@@ -106,84 +83,7 @@ package body CsrDefinitions is
         end case;
 
         if (fault = '0') then
-            case to_natural(i_addr) is
-                when to_natural(x"100") =>
-                    if (i_wen = '1') then
-                        i_scsr.sstatus <= i_wdata;
-                    else
-                        o_rdata <= i_scsr.sstatus;
-                    end if;
-                
-                when to_natural(x"104") =>
-                    if (i_wen = '1') then
-                        i_scsr.sie <= i_wdata;
-                    else
-                        o_rdata <= i_scsr.sie;
-                    end if;
-
-                when to_natural(x"105") =>
-                    if (i_wen = '1') then
-                        i_scsr.stvec <= i_wdata;
-                    else
-                        o_rdata <= i_scsr.stvec;
-                    end if;
-
-                when to_natural(x"106") =>
-                    if (i_wen = '1') then
-                        i_scsr.scounteren <= i_wdata;
-                    else
-                        o_rdata <= i_scsr.scounteren;
-                    end if;
-
-                when to_natural(x"10A") =>
-                    if (i_wen = '1') then
-                        i_scsr.senvcfg <= i_wdata;
-                    else
-                        o_rdata <= i_scsr.senvcfg;
-                    end if;
-
-                when to_natural(x"140") =>
-                    if (i_wen = '1') then
-                        i_scsr.sscratch <= i_wdata;
-                    else
-                        o_rdata <= i_scsr.sscratch;
-                    end if;
-
-                when to_natural(x"141") =>
-                    if (i_wen = '1') then
-                        i_scsr.sepc <= i_wdata;
-                    else
-                        o_rdata <= i_scsr.sepc;
-                    end if;
-
-                when to_natural(x"142") =>
-                    if (i_wen = '1') then
-                        i_scsr.scause <= i_wdata;
-                    else
-                        o_rdata <= i_scsr.scause;
-                    end if;
-
-                when to_natural(x"143") =>
-                    if (i_wen = '1') then
-                        i_scsr.stval <= i_wdata;
-                    else
-                        o_rdata <= i_scsr.stval;
-                    end if;
-
-                when to_natural(x"144") =>
-                    if (i_wen = '1') then
-                        i_scsr.sip <= i_wdata;
-                    else
-                        o_rdata <= i_scsr.sip;
-                    end if;
-
-                when to_natural(x"180") =>
-                    if (i_wen = '1') then
-                        i_scsr.satp <= i_wdata;
-                    else
-                        o_rdata <= i_scsr.satp;
-                    end if;
-            
+            case to_natural(i_addr) is            
                 when to_natural(x"300") =>
                     if (i_wen = '1') then
                         i_mcsr.mstatus(31 downto 0) <= i_wdata;
@@ -226,13 +126,6 @@ package body CsrDefinitions is
                         o_rdata <= i_mcsr.mtvec;
                     end if;
 
-                when to_natural(x"306") =>
-                    if (i_wen = '1') then
-                        i_mcsr.mcounteren <= i_wdata;
-                    else
-                        o_rdata <= i_mcsr.mcounteren;
-                    end if;
-
                 when to_natural(x"30A") =>
                     if (i_wen = '1') then
                         i_mcsr.menvcfg(31 downto 0) <= i_wdata;
@@ -254,20 +147,13 @@ package body CsrDefinitions is
                         o_rdata <= i_mcsr.menvcfg(63 downto 32);
                     end if;
 
-                when to_natural(x"320") =>
-                    if (i_wen = '1') then
-                        i_mcsr.mcountinhibit <= i_wdata;
-                    else
-                        o_rdata <= i_mcsr.mcountinhibit;
-                    end if;
-
                 when to_natural(x"323") to to_natural(x"33F") =>
                     hpmaddr := to_natural(i_addr) - to_natural(x"B00");
-                    -- if (i_wen = '1') then
-                    --     i_mcsr.mhpmcounters(hpmaddr)(31 downto 0) <= i_wdata;
-                    -- else
-                    --     o_rdata <= i_mcsr.mhpmcounters(hpmaddr)(31 downto 0);
-                    -- end if;
+                    if (i_wen = '1') then
+                        i_mcsr.mhpmcounters(hpmaddr)(31 downto 0) <= i_wdata;
+                    else
+                        o_rdata <= i_mcsr.mhpmcounters(hpmaddr)(31 downto 0);
+                    end if;
 
                 when to_natural(x"340") =>
                     if (i_wen = '1') then

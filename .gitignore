@@ -167,3 +167,5 @@ vunit_out
 
 # GHDL files
 **/**.cf
+
+**/**.o

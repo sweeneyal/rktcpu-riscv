@@ -1,2 +1,2 @@
 # scrv
-Soft-Core RISC-V (SCRV)
+Soft-Core RISC-V (SCRV) affectionately referred to as Scurvy
