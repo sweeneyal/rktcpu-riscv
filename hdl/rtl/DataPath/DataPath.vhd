@@ -59,6 +59,8 @@ architecture rtl of DataPath is
     signal aluvalid  : std_logic;
     signal mresult   : std_logic_vector(31 downto 0);
     signal ldone     : std_logic;
+    signal sdone     : std_logic;
+    signal bdone     : std_logic;
 begin
     
     eAlu : Alu
@@ -91,7 +93,8 @@ begin
         o_nxtpc  => nxtpc,
         o_pjpc   => pjpc,
         o_btaken => btaken,
-        o_jtaken => jtaken
+        o_jtaken => jtaken,
+        o_done   => bdone
     );
 
     o_nxtpc  <= nxtpc;
@@ -117,34 +120,48 @@ begin
         o_data  => mresult,
         o_ldone => ldone,
         o_sdone => sdone
-        
     );
 
-    ResultMux: process(aluvalid, aluresult, jtaken, pjpc, ldone, mresult, i_csrwen, i_csrw)
-        variable state : std_logic_vector(2 downto 0);
+    eMExtension : MExtensionUnit
+    port map (
+        i_clk    => i_clk,
+        i_opcode => i_opcode,
+        i_funct3 => i_funct3,
+        i_funct7 => i_funct7,
+        i_opA    => opA,
+        i_opB    => opB,
+        o_result => meresult,
+        o_done   => medone
+    );
+
+    ResultMux: process(aluvalid, aluresult, jtaken, pjpc, ldone, mresult, i_csrwen, i_csrw, medone, meresult)
+        variable state : std_logic_vector(4 downto 0);
     begin
-        state := i_csrwen & aluvalid & jtaken & ldone;
+        state := medone & i_csrwen & aluvalid & jtaken & ldone;
         case state is
-            when "0001" =>
+            when "00001" =>
                 result <= mresult;
 
-            when "0010" =>
+            when "00010" =>
                 result <= pjpc;
 
-            when "0100" =>
+            when "00100" =>
                 result <= aluresult;
 
-            when "1000" =>
+            when "01000" =>
                 result <= i_csrw;
+
+            when "10000" =>
+                result <= meresult;
 
             when others =>
                 result <= (others => '0');
         
         end case;
     end process ResultMux;
-    wen      <= jtaken or aluvalid or i_csrwen or ldone;
+    wen      <= jtaken or aluvalid or i_csrwen or ldone or medone;
     o_result <= result;
-    o_done   <= wen or sdone;
+    o_done   <= wen or sdone or bdone;
 
     eRegisterFile : RegisterFile
     generic map (

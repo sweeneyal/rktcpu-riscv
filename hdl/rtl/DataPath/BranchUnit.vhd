@@ -11,8 +11,6 @@ entity BranchUnit is
         i_pc     : in std_logic_vector(31 downto 0);
         i_opcode : in std_logic_vector(6 downto 0);
         i_funct3 : in std_logic_vector(2 downto 0);
-        i_rd     : in std_logic_vector(4 downto 0);
-        i_rs1    : in std_logic_vector(4 downto 0);
         i_itype  : in std_logic_vector(11 downto 0);
         i_jtype  : in std_logic_vector(20 downto 0);
         i_btype  : in std_logic_vector(12 downto 0);
@@ -22,7 +20,8 @@ entity BranchUnit is
         o_nxtpc  : out std_logic_vector(31 downto 0);
         o_pjpc   : out std_logic_vector(31 downto 0);
         o_btaken : out std_logic;
-        o_jtaken : out std_logic
+        o_jtaken : out std_logic;
+        o_done   : out std_logic
     );
 end entity BranchUnit;
 
@@ -46,47 +45,50 @@ begin
 
     SetBranchEnable: process(i_funct3, i_opcode, i_opA, i_opB)
     begin
-        if (i_opcode = cJumpOpcode) then
+        if (i_opcode = cJumpOpcode) then -- JAL
+            o_done   <= '1';
             o_jtaken <= '1'; -- Enable automatically set for Jumps
             o_btaken <= '0';
-        elsif (i_opcode = cJumpRegOpcode) then
+        elsif (i_opcode = cJumpRegOpcode) then -- JALR
+            o_done   <= '1';
             o_jtaken <= '1';
             o_btaken <= '0';
         elsif (i_opcode = cBranchOpcode) then
+            o_done   <= '1';
             o_jtaken <= '0';
             case i_funct3 is
                 when "000" =>
-                    if (i_opA = i_opB) then
+                    if (i_opA = i_opB) then -- BEQ
                         o_btaken <= '1';
                     else
                         o_btaken <= '0';
                     end if;
                 when "001" =>
-                    if (i_opA /= i_opB) then
+                    if (i_opA /= i_opB) then -- BNE
                         o_btaken <= '1';
                     else
                         o_btaken <= '0';
                     end if;
                 when "100" =>
-                    if (s32_t(i_opA) < s32_t(i_opB)) then
+                    if (s32_t(i_opA) < s32_t(i_opB)) then -- BLT
                         o_btaken <= '1';
                     else
                         o_btaken <= '0';
                     end if;
                 when "101" =>
-                    if (s32_t(i_opA) >= s32_t(i_opB)) then
+                    if (s32_t(i_opA) >= s32_t(i_opB)) then -- BGE
                         o_btaken <= '1';
                     else
                         o_btaken <= '0';
                     end if;
                 when "110" =>
-                    if (u32_t(i_opA) < u32_t(i_opB)) then
+                    if (u32_t(i_opA) < u32_t(i_opB)) then --BLTU
                         o_btaken <= '1';
                     else
                         o_btaken <= '0';
                     end if;
                 when "111" =>
-                    if (u32_t(i_opA) >= u32_t(i_opB)) then
+                    if (u32_t(i_opA) >= u32_t(i_opB)) then -- BGEU
                         o_btaken <= '1';
                     else
                         o_btaken <= '0';
@@ -96,6 +98,7 @@ begin
             
             end case;
         else
+            o_done   <= '0';
             o_jtaken <= '0';
             o_btaken <= '0';
         end if;

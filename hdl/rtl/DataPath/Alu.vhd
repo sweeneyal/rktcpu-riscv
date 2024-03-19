@@ -3,8 +3,8 @@ library ieee;
     use ieee.numeric_std.all;
 
 library universal;
-    use universal.TypeUtilityPkg.all;
-    use universal.CommonTypesPkg.all;
+    use universal.CommonFunctions.all;
+    use universal.CommonTypes.all;
 
 entity Alu is
     port (
@@ -24,67 +24,69 @@ end entity Alu;
 architecture rtl of Alu is
 begin
 
+    -- This will need to meet timing to work. It essentially expects to be done doing all operations here
+    -- in under a clock cycle.
     AluOperations: process(i_opcode, i_funct3, i_funct7, i_itype, i_opA, i_opB, i_shamt)
     begin
         case i_funct3 is
             when "000" =>
-                if (i_opcode = cAluImmedOpcode) then
+                if (i_opcode = cAluImmedOpcode) then -- ADDI
                     o_res <= std_logic_vector(s32_t(i_opA) + to_s32(i_itype));
                 else
-                    if (i_funct7 = "0100000") then
+                    if (i_funct7 = "0100000") then -- SUB
                         o_res <= std_logic_vector(s32_t(i_opA) - to_s32(i_opB));
-                    else
+                    else -- ADD
                         o_res <= std_logic_vector(s32_t(i_opA) + to_s32(i_opB));
                     end if;
                 end if;
-            when "001" =>
+            when "001" => -- SLLI
                 if (i_opcode = cAluImmedOpcode) then
                     o_res <= std_logic_vector(u32_t(i_opA) sll ToNatural(i_shamt));
-                else
+                else -- SLL
                     o_res <= std_logic_vector(u32_t(i_opA) sll ToNatural(i_opB));
                 end if;
             when "010" =>
-                if (i_opcode = cAluImmedOpcode) then
-                    o_res <= (31 downto 1 => '0') & Bool2Bit(i_opA < i_itype);
-                else
-                    o_res <= (31 downto 1 => '0') & Bool2Bit(i_opA < i_opB);
+                if (i_opcode = cAluImmedOpcode) then -- SLTI
+                    o_res <= (31 downto 1 => '0') & Bool2Bit(s32_t(i_opA) < to_s32(i_itype));
+                else -- SLT
+                    o_res <= (31 downto 1 => '0') & Bool2Bit(s32_t(i_opA) < s32_t(i_opB));
                 end if;
             when "011" =>
-                if (i_opcode = cAluImmedOpcode) then
-                    o_res <= (31 downto 1 => '0') & Bool2Bit(i_opA < i_itype);
-                else
-                    o_res <= (31 downto 1 => '0') & Bool2Bit(i_opA < i_opB);
+                if (i_opcode = cAluImmedOpcode) then -- SLTUI
+                    o_res <= (31 downto 1 => '0') & Bool2Bit(u32_t(i_opA) < to_u32(i_itype));
+                else -- SLTU
+                    o_res <= (31 downto 1 => '0') & Bool2Bit(u32_t(i_opA) < u32_t(i_opB));
                 end if;
             when "100" =>
-                if (i_opcode = cAluImmedOpcode) then
-                    o_res <= i_opA xor i_itype;
-                else
+                if (i_opcode = cAluImmedOpcode) then -- XORI
+                    o_res <= i_opA xor std_logic_vector(to_s32(itype));
+                else -- XOR
                     o_res <= i_opA xor i_opB;
                 end if;
             when "101" =>
                 if (i_opcode = cAluImmedOpcode) then
-                    if (i_funct7 = "0100000") then
-                        o_res <= std_logic_vector(s32_t(i_opA) sra ToNatural(i_itype));
-                    else
-                        o_res <= std_logic_vector(u32_t(i_opA) srl ToNatural(i_itype));
+                    if (i_funct7 = "0100000") then -- SRAI
+                        o_res <= std_logic_vector(s32_t(i_opA) sra ToNatural(i_shamt));
+                    else -- SRLI
+                        o_res <= std_logic_vector(u32_t(i_opA) srl ToNatural(i_shamt));
                     end if;
                 else
-                    if (i_funct7 = "0100000") then
-                        o_res <= std_logic_vector(u32_t(i_opA) sra ToNatural(i_opB));
-                    else
-                        o_res <= std_logic_vector(s32_t(i_opA) srl ToNatural(i_opB));
+                    if (i_funct7 = "0100000") then -- SRA
+                        o_res <= std_logic_vector(s32_t(i_opA) sra ToNatural(i_opB));
+                    else -- SRL
+                        o_res <= std_logic_vector(u32_t(i_opA) srl ToNatural(i_opB));
                     end if;
                 end if;
             when "110" =>
-                if (i_opcode = cAluImmedOpcode) then
-                    o_res <= i_opA or i_itype;
-                else
+                if (i_opcode = cAluImmedOpcode) then -- ORI
+                    o_res <= i_opA or std_logic_vector(to_s32(itype));
+                else -- OR
                     o_res <= i_opA or i_opB;
                 end if;
             when "111" =>
-                if (i_opcode = cAluImmedOpcode) then
-                    o_res <= i_opA and i_itype;
-                else
+                if (i_opcode = cAluImmedOpcode) then -- ANDI
+                    o_res <= i_opA and std_logic_vector(to_s32(itype));
+                else -- AND
                     o_res <= i_opA and i_opB;
                 end if;
             when others =>
@@ -92,10 +94,9 @@ begin
         end case;
     end process AluOperations;
 
-    SetAluEnable: process(i_opcode, i_funct7)
+    SetAluEnable: process(i_opcode)
     begin
-        o_valid <= Bool2Bit(i_opcode = cAluImmedOpcode or i_opcode = cAluOpcode) and
-            Bool2Bit(i_funct7 = "0100000" or i_funct7 = "0000000");
+        o_valid <= Bool2Bit(i_opcode = cAluImmedOpcode or i_opcode = cAluOpcode);
     end process SetAluEnable;
     
 end architecture rtl;

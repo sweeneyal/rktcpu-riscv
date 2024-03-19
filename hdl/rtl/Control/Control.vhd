@@ -59,9 +59,9 @@ architecture rtl of Control is
     type execute_state_t is (EX_WAIT, EX_EXECUTE, EX_ALU_WAIT, EX_BRANCH, 
         EX_JUMP, EX_FENCE, EX_MEM_ACCESS, EX_SYSTEM);
     type execute_engine_t is record
-        state : execute_state_t;
-        pc    : unsigned(31 downto 0);
-        instr : std_logic_vector(31 downto 0);
+        state  : execute_state_t;
+        pc     : unsigned(31 downto 0);
+        instr  : std_logic_vector(31 downto 0);
     end record execute_engine_t;
     signal execute_engine : execute_engine_t;
     
@@ -93,24 +93,36 @@ begin
         end if;
     end process FetchStateMachine;
 
-    -- Handle case where FIFO is full
+    -- Import Fifo logic here.
+    eSimpleFifo : SimpleFifo
+    generic map (
+
+    ) port map (
+
+    );
 
     ExecuteStateMachine: process(i_clk)
     begin
         if rising_edge(i_clk) then
             case execute_engine.state is
+                -- Wait for a new instruction to come in.
                 when EX_WAIT =>
                     if (ivalid = '1') then
                         execute_engine.instr <= instr;
                         execute_engine.state <= EX_EXECUTE;
                     end if;
             
+                -- Once we get that extension, we need to identify the type of instruction 
+                -- so we look at the correct signal and do the correct operations when it 
+                -- completes.
                 when EX_EXECUTE =>
                     if (not verify_instruction(execute_engine.instr)) then
                         execute_engine.state <= EX_SYSTEM;
                     else
                         case get_opcode(execute_engine.instr) is
                             when cAluOpcode | cAluImmedOpcode =>
+                                -- Is it worth adding the common-case-fast logic allowing us to bypass
+                                -- the additional clock cycle for standard ALU operations? This includes PC and other.
                                 execute_engine.state <= EX_ALU_WAIT;
                             
                             when cJumpOpcode | cJumpRegOpcode =>
@@ -122,24 +134,25 @@ begin
                             when cFenceOpcode =>
                                 execute_engine.state <= EX_FENCE;
                             
-                            when cEcallOpcode =>
+                            when cEcallOpcode => -- Rename this to cEnvOpcode
                                 execute_engine.state <= EX_SYSTEM;
 
-                            when cLoadOpcode | cLoadUpperOpcode | cStoreOpcode =>
+                            when cLoadOpcode | cStoreOpcode =>
                                 execute_engine.state <= EX_MEM_ACCESS;
                         
                             when others =>
-                                null;
+                                null; -- Need to address mul/div instructions and LUI.
                         end case;
                     end if;
 
+                -- Wait for the ALU to complete its operation.
                 when EX_ALU_WAIT =>
                     -- When we're here, we're waiting for the ALU to complete the operation.
                     -- Some operations (specifically multiplication, division, and any floating point ops)
                     -- take more cycles.
 
                     -- We're trying to make the common case fast.
-                    if (i_aluvalid = '1') then
+                    if (i_adone = '1') then
                         execute_engine.state <= EX_WAIT;
                         execute_engine.pc    <= execute_engine.pc + 1;
                     end if;
@@ -192,9 +205,19 @@ begin
         end if;
     end process ExecuteStateMachine;
 
+    -- We essentially get these for free from routing.
+    o_pc     <= std_logic_vector(execute_engine.pc);
     o_opcode <= get_opcode(execute_engine.instr);
     o_funct3 <= get_funct3(execute_engine.instr);
     o_funct7 <= get_funct7(execute_engine.instr);
+    o_rs1    <= get_rs1(execute_engine.instr);
+    o_rs2    <= get_rs2(execute_engine.instr);
+    o_rd     <= get_rd(execute_engine.instr);
+    o_itype  <= get_itype(execute_engine.instr);
+    o_stype  <= get_stype(execute_engine.instr);
+    o_btype  <= get_btype(execute_engine.instr);
+    o_utype  <= get_utype(execute_engine.instr);
+    o_jtype  <= get_jtype(execute_engine.instr);
     
     CsrControl: process(i_clk)
     begin
