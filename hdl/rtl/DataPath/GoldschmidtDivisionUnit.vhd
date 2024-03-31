@@ -1,3 +1,10 @@
+library ieee;
+    use ieee.std_logic_1164.all;
+    use ieee.numeric_std.all;
+
+library universal;
+    use universal.CommonFunctions.all;
+    use universal.CommonTypes.all;
 
 entity GoldschmidtDivisionUnit is
     port (
@@ -115,8 +122,8 @@ begin
                     
                 when STAGE1 =>
                     gdu_engine.state <= STAGE0;
-                    gdu_engine.num   <= num_product(95 downto 48);
-                    gdu_engine.denom <= den_product(95 downto 48);
+                    gdu_engine.num   <= num_product(95 downto 32);
+                    gdu_engine.denom <= den_product(95 downto 32);
 
                 when POST_PROCESS =>
                     -- If the input signs were both negative or both positive, the numbers stay as is.

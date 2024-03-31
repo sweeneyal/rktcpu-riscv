@@ -169,3 +169,9 @@ vunit_out
 **/**.cf
 
 **/**.o
+
+libraries
+vivado
+hdl/bd/**/ui
+hdl/bd/**/*.bda
+hdl/bd/**/*.bxml

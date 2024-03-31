@@ -3,8 +3,8 @@ library ieee;
     use ieee.numeric_std.all;
 
 library universal;
-    use universal.TypeUtilityPkg.all;
-    use universal.CommonTypesPkg.all;
+    use universal.CommonFunctions.all;
+    use universal.CommonTypes.all;
 
 entity RegisterFile is
     generic (

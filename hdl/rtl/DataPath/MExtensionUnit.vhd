@@ -1,4 +1,10 @@
+library ieee;
+    use ieee.std_logic_1164.all;
+    use ieee.numeric_std.all;
 
+library universal;
+    use universal.CommonFunctions.all;
+    use universal.CommonTypes.all;
 
 entity MExtensionUnit is
     port (
@@ -19,6 +25,11 @@ architecture rtl of MExtensionUnit is
     signal issigned : std_logic;
     signal opA_div : unsigned(31 downto 0);
     signal opB_div : unsigned(31 downto 0);
+    signal mdone   : std_logic;
+    signal mresult : std_logic_vector(31 downto 0);
+    signal ddone   : std_logic;
+    signal dresult : std_logic_vector(31 downto 0);
+    signal rresult : std_logic_vector(31 downto 0);
 begin
 
     InternalControl: process(i_clk)
@@ -43,8 +54,8 @@ begin
         i_opA    => i_opA,
         i_opB    => i_opB,
         i_funct3 => i_funct3,
-        o_result => o_mresult,
-        o_done   => o_mdone
+        o_result => mresult,
+        o_done   => mdone
     );
 
     issigned <= not i_funct3(0)
@@ -56,11 +67,24 @@ begin
         i_signed => issigned,
         i_num    => i_opA,
         i_denom  => i_opB,
-        o_div    => div_result,
-        o_rem    => rem_result,
-        o_valid  => div_valid
+        o_div    => dresult,
+        o_rem    => rresult,
+        o_valid  => ddone
     );
 
-    o_done <= div_valid or o_mdone;
+    Multiplexor: process(i_funct3, mdone, mresult, ddone, dresult, rresult)
+    begin
+        if (i_funct3(2) = '0') then
+            o_result <= mresult;
+        elsif (i_funct3(2 downto 1) = "10") then
+            o_result <= dresult;
+        elsif (i_funct3(2 downto 1) = "11") then
+            o_result <= rresult;
+        else
+            o_result <= (others => '0');
+        end if;
+    end process Multiplexor;
+
+    o_done <= ddone or mdone;
     
 end architecture rtl;

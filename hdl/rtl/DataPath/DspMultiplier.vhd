@@ -1,3 +1,10 @@
+library ieee;
+    use ieee.std_logic_1164.all;
+    use ieee.numeric_std.all;
+
+library universal;
+    use universal.CommonFunctions.all;
+    use universal.CommonTypes.all;
 
 entity DspMultiplier is
     port (
@@ -10,7 +17,6 @@ entity DspMultiplier is
         o_done   : out std_logic
     );
 end entity DspMultiplier;
-
 
 architecture rtl of DspMultiplier is
     signal opAextended       : signed(63 downto 0);
@@ -42,7 +48,7 @@ begin
     MultiplierImplementation: process(i_clk)
     begin
         if rising_edge(i_clk) then
-            resultExtended_d1 <= opAextended * opBextended;
+            resultExtended_d1 <= opAextended_reg * opBextended_reg;
             resultExtended    <= resultExtended_d1;
     
             case state is
