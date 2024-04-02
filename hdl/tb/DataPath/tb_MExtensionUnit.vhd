@@ -6,7 +6,15 @@ library ieee;
     use ieee.numeric_std.all;
 
 library osvvm;
-    use osvvm.TbUtilityPkg.all;
+    use osvvm.TbUtilPkg.all;
+
+library universal;
+    use universal.CommonFunctions.all;
+    use universal.CommonTypes.all;
+
+library scrv;
+    use scrv.RiscVDefinitions.all;
+    use scrv.DataPathEntities.all;
 
 entity tb_MExtensionUnit is
     generic (runner_cfg : string);
@@ -20,10 +28,10 @@ architecture tb of tb_MExtensionUnit is
     signal opA    : std_logic_vector(31 downto 0);
     signal opB    : std_logic_vector(31 downto 0);
     signal result : std_logic_vector(31 downto 0);
-    signal done   : std_logic
+    signal done   : std_logic;
 begin
     
-    CreateClock(clock=>clk, period=>5 ns);
+    CreateClock(clk=>clk, period=>5 ns);
 
     eMExtension : MExtensionUnit
     port map (
@@ -33,8 +41,8 @@ begin
         i_funct7 => funct7,
         i_opA    => opA,
         i_opB    => opB,
-        o_result => meresult,
-        o_done   => medone
+        o_result => result,
+        o_done   => done
     );
 
     Stimuli: process
@@ -42,7 +50,7 @@ begin
         test_runner_setup(runner, runner_cfg);
         while test_suite loop
             if run("t_mext") then
-                
+                check(false);
             end if;
         end loop;
         test_runner_cleanup(runner);

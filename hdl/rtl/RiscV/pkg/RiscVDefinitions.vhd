@@ -3,8 +3,8 @@ library ieee;
     use ieee.numeric_std.all;
 
 library universal;
-    use universal.TypeUtilityPkg.all;
-    use universal.CommonTypesPkg.all;
+    use universal.CommonFunctions.all;
+    use universal.CommonTypes.all;
 
 package RiscVDefinitions is
     
@@ -31,6 +31,16 @@ package RiscVDefinitions is
     constant cAuipcOpcode     : std_logic_vector(6 downto 0) := "0010111";
     constant cFenceOpcode     : std_logic_vector(6 downto 0) := "0001111";
     constant cEcallOpcode     : std_logic_vector(6 downto 0) := "1110011";
+    constant cMulDivOpcode    : std_logic_vector(6 downto 0) := "0110011";
+
+    constant cMulFunct3    : std_logic_vector(2 downto 0) := "000";
+    constant cMulhFunct3   : std_logic_vector(2 downto 0) := "001";
+    constant cMulhsuFunct3 : std_logic_vector(2 downto 0) := "010";
+    constant cMulhuFunct3  : std_logic_vector(2 downto 0) := "011";
+    constant cDivFunct3    : std_logic_vector(2 downto 0) := "100";
+    constant cDivuFunct3   : std_logic_vector(2 downto 0) := "101";
+    constant cRemFunct3    : std_logic_vector(2 downto 0) := "110";
+    constant cRemuFunct3   : std_logic_vector(2 downto 0) := "111";
     
 end package RiscVDefinitions;
 

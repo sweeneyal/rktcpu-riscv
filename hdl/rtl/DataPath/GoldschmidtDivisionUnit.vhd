@@ -6,6 +6,9 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
+library scrv;
+    use scrv.RiscVDefinitions.all;
+
 entity GoldschmidtDivisionUnit is
     port (
         i_clk    : in std_logic;
@@ -15,6 +18,7 @@ entity GoldschmidtDivisionUnit is
         i_denom  : in std_logic_vector(31 downto 0);
         o_div    : out std_logic_vector(31 downto 0);
         o_rem    : out std_logic_vector(31 downto 0);
+        o_error  : out std_logic;
         o_valid  : out std_logic
     );
 end entity GoldschmidtDivisionUnit;
@@ -26,24 +30,26 @@ architecture rtl of GoldschmidtDivisionUnit is
     signal num_product : unsigned(127 downto 0);
     signal den_product : unsigned(127 downto 0);
 
-    type state_t is (IDLE, EXTEND, STAGE0, STAGE1, DONE);
+    type state_t is (IDLE, EXTEND, STAGE0, STAGE1, POST_PROCESS, DONE);
     type gdu_engine_t is record
-        state : state_t;
-        num   : unsigned(63 downto 0);
-        snum  : std_logic;
-        denom : unsigned(63 downto 0);
-        sden  : std_logic;
+        state  : state_t;
+        num    : unsigned(63 downto 0);
+        snum   : std_logic;
+        denom  : unsigned(63 downto 0);
+        sden   : std_logic;
         cdenom : unsigned(63 downto 0);
-        remdr : unsigned(63 downto 0);
-        fval  : unsigned(63 downto 0);
-        iterations : natural range 0 to 4;
+        remdr  : unsigned(63 downto 0);
+        fval   : unsigned(63 downto 0);
+        iter   : natural range 0 to 4;
     end record gdu_engine_t;
     signal gdu_engine : gdu_engine_t;
 
     function find_first_high_bit(slv : std_logic_vector) return natural is
+        variable slv_v : std_logic_vector(slv'length - 1 downto 0);
     begin
-        for ii in slv'length - 1 downto 0 loop
-            if slv(ii) = '1' then
+        slv_v := slv;
+        for ii in slv_v'length - 1 downto 0 loop
+            if slv_v(ii) = '1' then
                 return ii;
             end if;
         end loop;
@@ -89,7 +95,7 @@ begin
 
                     -- Reset the iteration and fval signals.
                     gdu_engine.iter  <= 0;
-                    gdu_engine.fval  <= x"00000000";
+                    gdu_engine.fval  <= (others => '0');
                     o_error <= '0';
 
                 when EXTEND =>
@@ -117,7 +123,8 @@ begin
                     else
                         gdu_engine.state <= POST_PROCESS;
                         -- Do remainder calculation here.
-                        gdu_engine.remdr <= unsigned(x"00000000" & gdu_engine.num(31 downto 0)) * denom;
+                        gdu_engine.remdr <= unsigned(shape(std_logic_vector(
+                            resize(unsigned(gdu_engine.num(31 downto 0)), 64) * gdu_engine.cdenom), 95, 32));
                     end if;
                     
                 when STAGE1 =>
@@ -128,6 +135,7 @@ begin
                 when POST_PROCESS =>
                     -- If the input signs were both negative or both positive, the numbers stay as is.
                     -- Otherwise, convert back to signed, make them negative, and then cast as unsigned.
+                    gdu_engine.state <= DONE;
                     if gdu_engine.snum /= gdu_engine.sden then
                         gdu_engine.num <= unsigned(-signed(gdu_engine.num));
                         gdu_engine.remdr <= unsigned(-signed(gdu_engine.remdr));

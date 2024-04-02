@@ -6,7 +6,16 @@ library ieee;
     use ieee.numeric_std.all;
 
 library osvvm;
-    use osvvm.TbUtilityPkg.all;
+    use osvvm.TbUtilPkg.all;
+    use osvvm.RandomPkg.all;
+
+library universal;
+    use universal.CommonFunctions.all;
+    use universal.CommonTypes.all;
+
+library scrv;
+    use scrv.RiscVDefinitions.all;
+    use scrv.DataPathEntities.all;
 
 entity tb_MemAccessUnit is
     generic (runner_cfg : string);
@@ -30,16 +39,18 @@ architecture tb of tb_MemAccessUnit is
     signal sdone  : std_logic;
     signal msaln  : std_logic;
 
+    signal wdata : std_logic_vector(31 downto 0);
+
     procedure emulate_memory_store (
-        variable memory : std_logic_matrix_t;
-        signal address  : std_logic_vector(31 downto 0);
-        signal en       : std_logic;
-        signal wen      : std_logic_vector(3 downto 0);
-        signal wdata    : std_logic_vector(31 downto 0)
+        variable memory : out std_logic_matrix_t;
+        signal address  : in std_logic_vector(31 downto 0);
+        signal en       : in std_logic;
+        signal wen      : in std_logic_vector(3 downto 0);
+        signal wdata_s  : in std_logic_vector(31 downto 0)
     ) is
-        variable addr : natural;
+        variable addr_v : natural;
     begin
-        addr := to_natural(address);
+        addr_v := to_natural(address);
         if (en = '1') then
             for ii in 0 to 3 loop
                 if (wen(ii) = '1') then
@@ -47,7 +58,7 @@ architecture tb of tb_MemAccessUnit is
                     -- This is likely acceptable, as in a real implementation there would be an exception,
                     -- that then performs a system function that performs the unaligned memory access.
                     -- However, may be worth intrinsically supporting misaligned accesses.
-                    memory(addr + ii) := wdata(8 * (ii + 1) - 1 downto 8 * ii);
+                    memory(addr_v + ii) := wdata_s(8 * (ii + 1) - 1 downto 8 * ii);
                 end if;
             end loop;
         end if;
@@ -59,22 +70,25 @@ architecture tb of tb_MemAccessUnit is
         en      : std_logic;
         wen     : std_logic_vector(3 downto 0)
     ) return std_logic_vector is
-        variable rdata : std_logic_vector(31 downto 0);
+        variable rdata_v : std_logic_vector(31 downto 0);
+        variable addr_v : natural;
     begin
-        addr := to_natural(address);
+        rdata_v  := to_slv(0, 32);
+        addr_v := to_natural(address);
         if (en = '1') then
             for ii in 0 to 3 loop
                 -- Problem is that this is allows a non-multiple of 4 addr to index the memory.
                 -- This is likely acceptable, as in a real implementation there would be an exception,
                 -- that then performs a system function that performs the unaligned memory access. Or
                 -- we would intrinsically support misaligned accesses.
-                rdata(8 * (ii + 1) - 1 downto 8 * ii) := memory(addr + ii);
+                rdata_v(8 * (ii + 1) - 1 downto 8 * ii) := memory(addr_v + ii);
             end loop;
         end if;
+        return rdata_v;
     end function;
 begin
     
-    CreateClock(clock=>clk, period=>5 ns);
+    CreateClock(clk=>clk, period=>5 ns);
 
     eDut : MemAccessUnit
     port map (
@@ -83,7 +97,7 @@ begin
         i_opA    => opA,
         i_itype  => itype,
         i_stype  => stype,
-        i_funct3 => funct3
+        i_funct3 => funct3,
         
         o_addr => addr,
         o_men  => men,
@@ -93,7 +107,7 @@ begin
         i_rvalid => rvalid,
         i_rdata  => rdata,
         
-        o_data  => mresult,
+        o_data  => data,
         o_ldone => ldone,
         o_sdone => sdone,
         o_msaln => msaln
@@ -101,7 +115,7 @@ begin
 
     Stimuli: process
         variable memory_emulator : std_logic_matrix_t(0 to 63)(7 downto 0);
-        signal wdata : std_logic_vector(31 downto 0);
+        variable RandData        : RandomPType;
     begin
         test_runner_setup(runner, runner_cfg);
         while test_suite loop
@@ -114,7 +128,7 @@ begin
                 ack    <= '0';
                 rvalid <= '0';
                 rdata  <= (others => '0');
-                wdata  <= rand_slv(32);
+                wdata  <= RandData.RandSlv(0, 2**32 - 1, 32);
 
                 wait until rising_edge(clk);
                 wait for 100 ps;
@@ -132,7 +146,7 @@ begin
                 ack    <= '0';
                 rvalid <= '0';
                 rdata  <= (others => '0');
-                wdata  <= rand_slv(32);
+                wdata  <= RandData.RandSlv(0, 2**32 - 1, 32);
 
                 wait until rising_edge(clk);
                 wait for 100 ps;
@@ -153,7 +167,7 @@ begin
                 ack    <= '0';
                 rvalid <= '0';
                 rdata  <= (others => '0');
-                wdata  <= rand_slv(32);
+                wdata  <= RandData.RandSlv(0, 2**32 - 1, 32);
 
                 wait until rising_edge(clk);
                 wait for 100 ps;

@@ -6,6 +6,9 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
+library scrv;
+    use scrv.RiscVDefinitions.all;
+
 entity DspMultiplier is
     port (
         i_clk    : in std_logic;
@@ -25,11 +28,14 @@ architecture rtl of DspMultiplier is
     signal opBextended_reg   : signed(63 downto 0);
     signal resultExtended_d1 : signed(127 downto 0);
     signal resultExtended    : signed(127 downto 0);
+
+    type state_t is (IDLE, MULS0, MULS1, DONE);
+    signal state : state_t;
 begin
     
     OperandExtension: process(i_opA, i_opB, i_funct3)
     begin
-        case funct3 is
+        case i_funct3 is
             when cMulFunct3 =>
                 opAextended <= resize(signed(i_opA), 64);
                 opBextended <= resize(signed(i_opB), 64);
@@ -71,13 +77,13 @@ begin
                     end if;
                     case i_funct3 is
                         when cMulFunct3 =>
-                            o_result <= resultExtended(31 downto 0);
+                            o_result <= std_logic_vector(resultExtended(31 downto 0));
                         when cMulhFunct3 =>
-                            o_result <= resultExtended(63 downto 32);
+                            o_result <= std_logic_vector(resultExtended(63 downto 32));
                         when cMulhsuFunct3 =>
-                            o_result <= resultExtended(63 downto 32);
+                            o_result <= std_logic_vector(resultExtended(63 downto 32));
                         when others =>
-                            o_result <= resultExtended(63 downto 32);
+                            o_result <= std_logic_vector(resultExtended(63 downto 32));
                     end case;
                     o_done <= '1';
     

@@ -6,7 +6,10 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-entity MemoryAccessUnit is
+library scrv;
+    use scrv.RiscVDefinitions.all;
+
+entity MemAccessUnit is
     port (
         i_clk    : in std_logic;
         i_opcode : in std_logic_vector(6 downto 0);
@@ -28,9 +31,9 @@ entity MemoryAccessUnit is
         o_sdone : out std_logic;
         o_msaln : out std_logic
     );
-end entity MemoryAccessUnit;
+end entity MemAccessUnit;
 
-architecture rtl of MemoryAccessUnit is
+architecture rtl of MemAccessUnit is
     type state_t is (IDLE, STORE_DATA, LOAD_DATA, LOAD_FINISH, LOAD_DONE, STORE_DONE);
     signal addr     : std_logic_vector(31 downto 0);
     signal immed    : std_logic_vector(11 downto 0);
@@ -118,15 +121,15 @@ begin
                 when LOAD_FINISH =>
                     case i_funct3 is
                         when "000" =>
-                            mengine.data <= std_logic_vector(resize(signed(mengine.data(7 downto 0))));
+                            mengine.data <= std_logic_vector(resize(signed(mengine.data(7 downto 0)), 32));
                         when "001" =>
-                            mengine.data <= std_logic_vector(resize(signed(mengine.data(15 downto 0))));
+                            mengine.data <= std_logic_vector(resize(signed(mengine.data(15 downto 0)), 32));
                         when "010" =>
                             mengine.data <= mengine.data;
                         when "100" =>
-                            mengine.data <= std_logic_vector(resize(unsigned(mengine.data(7 downto 0))));
+                            mengine.data <= std_logic_vector(resize(unsigned(mengine.data(7 downto 0)), 32));
                         when "101" =>
-                            mengine.data <= std_logic_vector(resize(unsigned(mengine.data(15 downto 0))));
+                            mengine.data <= std_logic_vector(resize(unsigned(mengine.data(15 downto 0)), 32));
                         when others =>
                             mengine.data <= mengine.data;
                     end case;

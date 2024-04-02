@@ -6,43 +6,34 @@ library ieee;
     use ieee.numeric_std.all;
 
 library osvvm;
-    use osvvm.TbUtilityPkg.all;
+    use osvvm.TbUtilPkg.all;
+
+library universal;
+    use universal.CommonFunctions.all;
+    use universal.CommonTypes.all;
+
+library scrv;
+    use scrv.RiscVDefinitions.all;
+    use scrv.DataPathEntities.all;
 
 entity tb_RegisterFile is
     generic (runner_cfg : string);
 end entity tb_RegisterFile;
 
 architecture tb of tb_RegisterFile is
-    signal clk    : std_logic;
-    signal opcode : std_logic_vector(6 downto 0);
-    signal funct3 : std_logic_vector(2 downto 0);
-    signal funct7 : std_logic_vector(6 downto 0);
-    signal opA    : std_logic_vector(31 downto 0);
-    signal opB    : std_logic_vector(31 downto 0);
-    signal result : std_logic_vector(31 downto 0);
-    signal done   : std_logic
+    signal clk : std_logic;
 begin
     
-    CreateClock(clock=>clk, period=>5 ns);
+    CreateClock(clk=>clk, period=>5 ns);
 
-    eMExtension : MExtensionUnit
-    port map (
-        i_clk    => clk,
-        i_opcode => opcode,
-        i_funct3 => funct3,
-        i_funct7 => funct7,
-        i_opA    => opA,
-        i_opB    => opB,
-        o_result => meresult,
-        o_done   => medone
-    );
+    
 
     Stimuli: process
     begin
         test_runner_setup(runner, runner_cfg);
         while test_suite loop
             if run("t_regfile") then
-                
+                check(false);
             end if;
         end loop;
         test_runner_cleanup(runner);

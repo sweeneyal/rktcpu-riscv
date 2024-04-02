@@ -6,7 +6,16 @@ library ieee;
     use ieee.numeric_std.all;
 
 library osvvm;
-    use osvvm.TbUtilityPkg.all;
+    use osvvm.TbUtilPkg.all;
+    use osvvm.RandomPkg.all;
+
+library universal;
+    use universal.CommonFunctions.all;
+    use universal.CommonTypes.all;
+
+library scrv;
+    use scrv.RiscVDefinitions.all;
+    use scrv.DataPathEntities.all;
 
 entity tb_GoldschmidtDivisionUnit is
     generic (runner_cfg : string);
@@ -24,7 +33,7 @@ architecture tb of tb_GoldschmidtDivisionUnit is
     signal ddone    : std_logic;
 begin
     
-    CreateClock(clock=>clk, period=>5 ns);
+    CreateClock(clk=>clk, period=>5 ns);
 
     eDut : GoldschmidtDivisionUnit
     port map (
@@ -43,13 +52,15 @@ begin
         variable opB_int : integer;
         variable div     : std_logic_vector(31 downto 0);
         variable rrem    : std_logic_vector(31 downto 0);
+        variable RandData : RandomPType;
     begin
         test_runner_setup(runner, runner_cfg);
         while test_suite loop
             if run("t_basic_division") then
                 en      <= '1';
-                opA     <= rand_slv(32);
-                opB     <= rand_slv(32);
+                opA     <= RandData.RandSlv(x"00000001", x"FFFFFFFF");
+                opB     <= RandData.RandSlv(x"00000001", x"FFFFFFFF");
+                wait for 100 ps;
                 opA_int := to_integer(opA);
                 opB_int := to_integer(opB);
                 div     := to_slv(opA_int/opB_int, 32);
@@ -60,6 +71,7 @@ begin
                 end loop;
 
                 check(ddone = '1');
+                -- Error occurs because these are not equal to the expected. Fix this;
                 check(div   = dresult);
                 check(rrem  = rresult);
             end if;

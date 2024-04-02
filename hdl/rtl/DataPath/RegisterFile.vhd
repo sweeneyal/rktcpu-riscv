@@ -26,12 +26,11 @@ end entity RegisterFile;
 
 architecture rtl of RegisterFile is
     constant cNumAddresses : natural := 2**cAddressWidth;
-    type register_array_t is array (natural range <>) of std_logic_vector(cDataWidth - 1 downto 0);
-    signal registers : register_array_t(0 to cNumAddresses - 1);
+    signal registers : std_logic_matrix_t(0 to cNumAddresses - 1)(cDataWidth - 1 downto 0);
 begin
 
-    o_opA <= registers(ToNatural(i_rs1));
-    o_opB <= registers(ToNatural(i_rs2));
+    o_opA <= registers(to_natural(i_rs1));
+    o_opB <= registers(to_natural(i_rs2));
 
     RegisterWriteControl: process(i_clk)
     begin
@@ -42,7 +41,7 @@ begin
                 end loop;
             else
                 if (i_wen = '1') then
-                    registers(ToNatural(i_rd)) <= i_result;
+                    registers(to_natural(i_rd)) <= i_result;
                 end if;
             end if;
         end if;

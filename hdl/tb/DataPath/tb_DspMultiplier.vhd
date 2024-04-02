@@ -6,7 +6,16 @@ library ieee;
     use ieee.numeric_std.all;
 
 library osvvm;
-    use osvvm.TbUtilityPkg.all;
+    use osvvm.TbUtilPkg.all;
+    use osvvm.RandomPkg.all;
+
+library universal;
+    use universal.CommonFunctions.all;
+    use universal.CommonTypes.all;
+
+library scrv;
+    use scrv.RiscVDefinitions.all;
+    use scrv.DataPathEntities.all;
 
 entity tb_DspMultiplier is
     generic (runner_cfg : string);
@@ -22,7 +31,7 @@ architecture tb of tb_DspMultiplier is
     signal mdone   : std_logic;
 begin
     
-    CreateClock(clock=>clk, period=>5 ns);
+    CreateClock(clk=>clk, period=>5 ns);
 
     eDut : DspMultiplier
     port map (
@@ -38,13 +47,14 @@ begin
     Stimuli: process
         variable funct3s : std_logic_matrix_t(0 to 3)(2 downto 0);
         variable result  : std_logic_vector(31 downto 0);
+        variable RandData : RandomPType;
     begin
         test_runner_setup(runner, runner_cfg);
         while test_suite loop
             if run("t_standard_mult") then
                 funct3s := (cMulFunct3, cMulhFunct3, cMulhsuFunct3, cMulhuFunct3);
-                opA <= rand_slv(32);
-                opB <= rand_slv(32);
+                opA <= RandData.RandSlv(x"FFFFFFFF");
+                opB <= RandData.RandSlv(x"FFFFFFFF");
                 for ii in 0 to 3 loop
                     funct3 <= funct3s(ii);
                     en     <= '1';
@@ -56,23 +66,23 @@ begin
                     check(mdone = '1');
                     case funct3 is
                         when cMulFunct3 =>
-                            result := shape(resize(signed(opA), 64) * resize(signed(i_opB), 64), 31, 0);
+                            result := shape(std_logic_vector(resize(signed(opA), 64) * resize(signed(opB), 64)), 31, 0);
                             check(result = mresult);
 
                         when cMulhFunct3 =>
-                            result := shape(resize(signed(opA), 64) * resize(signed(i_opB), 64), 63, 32);
+                            result := shape(std_logic_vector(resize(signed(opA), 64) * resize(signed(opB), 64)), 63, 32);
                             check(result = mresult);
                         
                         when cMulhsuFunct3 =>
-                            result := shape(resize(signed(opA), 64) * resize(signed(i_opB), 64), 63, 32);
+                            result := shape(std_logic_vector(resize(signed(opA), 64) * resize(signed(opB), 64)), 63, 32);
                             check(result = mresult);
 
                         when cMulhuFunct3 =>
-                            result := shape(resize(signed(opA), 64) * resize(signed(i_opB), 64), 63, 32);
+                            result := shape(std_logic_vector(resize(signed(opA), 64) * resize(signed(opB), 64)), 63, 32);
                             check(result = mresult);
 
                         when others =>
-                            result := shape(resize(signed(opA), 64) * resize(signed(i_opB), 64), 63, 32);
+                            result := shape(std_logic_vector(resize(signed(opA), 64) * resize(signed(opB), 64)), 63, 32);
                             check(result = mresult);
                             -- Honestly, this should not be an option.
                     

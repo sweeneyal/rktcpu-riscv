@@ -6,13 +6,23 @@ library ieee;
     use ieee.numeric_std.all;
 
 library osvvm;
-    use osvvm.TbUtilityPkg.all;
+    use osvvm.TbUtilPkg.all;
+    use osvvm.RandomPkg.all;
+
+library universal;
+    use universal.CommonFunctions.all;
+    use universal.CommonTypes.all;
+
+library scrv;
+    use scrv.RiscVDefinitions.all;
+    use scrv.DataPathEntities.all;
 
 entity tb_BranchUnit is
     generic (runner_cfg : string);
 end entity tb_BranchUnit;
 
 architecture tb of tb_BranchUnit is
+    signal clk    : std_logic;
     signal pc     : std_logic_vector(31 downto 0);
     signal opcode : std_logic_vector(6 downto 0);
     signal funct3 : std_logic_vector(2 downto 0);
@@ -30,7 +40,7 @@ architecture tb of tb_BranchUnit is
     signal bexcept : std_logic;
 begin
     
-    CreateClock(clock=>clk, period=>5 ns);
+    CreateClock(clk=>clk, period=>5 ns);
 
     eDut : BranchUnit
     port map (
@@ -52,16 +62,17 @@ begin
     );
     
     Stimuli: process
+        variable RandData : RandomPType;
     begin
         test_runner_setup(runner, runner_cfg);
         while test_suite loop
             if run("t_branch") then
-                pc     <= rand_slv(32);
+                pc     <= RandData.RandSlv(x"FFFFFFFF");
                 opcode <= cBranchOpcode;
-                opA    <= rand_slv(32);
-                opB    <= rand_slv(32);
+                opA    <= RandData.RandSlv(x"FFFFFFFF");
+                opB    <= RandData.RandSlv(x"FFFFFFFF");
                 itype  <= (others => '0');
-                btype  <= rand_slv(13);
+                btype  <= RandData.RandSlv("1111111111111");
 
                 -- Assert that pjpc is always pc + 4;
                 for ii in 0 to 7 loop
@@ -81,6 +92,7 @@ begin
                             
                         when 1 => -- BNE
                             wait until rising_edge(clk);
+                            wait for 100 ps;
                             if (signed(opA) /= signed(opB)) then
                                 check(btaken = '1');
                             else
@@ -154,37 +166,35 @@ begin
                 
             elsif run("t_jump") then
                 opcode <= cJumpOpcode;
-                pc     <= rand_slv(32);
-                jtype  <= rand_slv(21);
+                pc     <= RandData.RandSlv(x"FFFFFFFF");
+                jtype  <= RandData.RandSlv(0, 2**21 - 1, 21);
                 opA    <= (others => '0');
                 opB    <= (others => '0');
                 itype  <= (others => '0');
                 btype  <= (others => '0');
-                rs2    <= (others => '0');
                 
                 wait until rising_edge(clk);
                 wait for 100 ps;
                 check(nxtpc   = std_logic_vector(s32_t(pc) + to_s32(jtype)));
-                check(pjpc    = std_logic_vector(s32_t(pc) + 4))
+                check(pjpc    = std_logic_vector(s32_t(pc) + 4));
                 check(jtaken  = '1');
                 check(btaken  = '0');
                 check(bdone   = '1');
                 check(bexcept = '0');
 
             elsif run("t_jumpreg") then
-                opcode <= cJumpOpcode;
-                pc     <= rand_slv(32);
-                opA    <= rand_slv(32);
-                itype  <= rand_slv(12);
+                opcode <= cJumpRegOpcode;
+                pc     <= RandData.RandSlv(x"FFFFFFFF");
+                opA    <= RandData.RandSlv(x"FFFFFFFF");
+                itype  <= RandData.RandSlv("111111111111");
                 jtype  <= (others => '0');
                 opB    <= (others => '0');
                 btype  <= (others => '0');
-                rs2    <= (others => '0');
                 
                 wait until rising_edge(clk);
                 wait for 100 ps;
                 check(nxtpc   = std_logic_vector(s32_t(opA) + to_s32(itype)));
-                check(pjpc    = std_logic_vector(s32_t(pc) + 4))
+                check(pjpc    = std_logic_vector(s32_t(pc) + 4));
                 check(jtaken  = '1');
                 check(btaken  = '0');
                 check(bdone   = '1');

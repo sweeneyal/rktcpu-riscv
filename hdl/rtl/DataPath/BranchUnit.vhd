@@ -6,6 +6,9 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
+library scrv;
+    use scrv.RiscVDefinitions.all;
+
 entity BranchUnit is
     port (
         i_pc     : in std_logic_vector(31 downto 0);

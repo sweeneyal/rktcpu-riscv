@@ -6,6 +6,10 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
+library scrv;
+    use scrv.RiscVDefinitions.all;
+    use scrv.DataPathEntities.all;
+
 entity MExtensionUnit is
     port (
         i_clk    : in std_logic;
@@ -58,7 +62,7 @@ begin
         o_done   => mdone
     );
 
-    issigned <= not i_funct3(0)
+    issigned <= not i_funct3(0);
 
     eGdu : GoldschmidtDivisionUnit
     port map (

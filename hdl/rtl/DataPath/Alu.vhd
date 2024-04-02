@@ -6,6 +6,9 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
+library scrv;
+    use scrv.RiscVDefinitions.all;
+
 entity Alu is
     port (
         i_opcode : in std_logic_vector(6 downto 0);
@@ -41,9 +44,9 @@ begin
                 end if;
             when "001" => -- SLLI
                 if (i_opcode = cAluImmedOpcode) then
-                    o_res <= std_logic_vector(u32_t(i_opA) sll ToNatural(i_shamt));
+                    o_res <= std_logic_vector(u32_t(i_opA) sll to_natural(i_shamt));
                 else -- SLL
-                    o_res <= std_logic_vector(u32_t(i_opA) sll ToNatural(i_opB));
+                    o_res <= std_logic_vector(u32_t(i_opA) sll to_natural(i_opB));
                 end if;
             when "010" =>
                 if (i_opcode = cAluImmedOpcode) then -- SLTI
@@ -59,33 +62,33 @@ begin
                 end if;
             when "100" =>
                 if (i_opcode = cAluImmedOpcode) then -- XORI
-                    o_res <= i_opA xor std_logic_vector(to_s32(itype));
+                    o_res <= i_opA xor std_logic_vector(to_s32(i_itype));
                 else -- XOR
                     o_res <= i_opA xor i_opB;
                 end if;
             when "101" =>
                 if (i_opcode = cAluImmedOpcode) then
                     if (i_funct7 = "0100000") then -- SRAI
-                        o_res <= std_logic_vector(s32_t(i_opA) sra ToNatural(i_shamt));
+                        o_res <= std_logic_vector(s32_t(i_opA) sra to_natural(i_shamt));
                     else -- SRLI
-                        o_res <= std_logic_vector(u32_t(i_opA) srl ToNatural(i_shamt));
+                        o_res <= std_logic_vector(u32_t(i_opA) srl to_natural(i_shamt));
                     end if;
                 else
                     if (i_funct7 = "0100000") then -- SRA
-                        o_res <= std_logic_vector(s32_t(i_opA) sra ToNatural(i_opB));
+                        o_res <= std_logic_vector(s32_t(i_opA) sra to_natural(i_opB));
                     else -- SRL
-                        o_res <= std_logic_vector(u32_t(i_opA) srl ToNatural(i_opB));
+                        o_res <= std_logic_vector(u32_t(i_opA) srl to_natural(i_opB));
                     end if;
                 end if;
             when "110" =>
                 if (i_opcode = cAluImmedOpcode) then -- ORI
-                    o_res <= i_opA or std_logic_vector(to_s32(itype));
+                    o_res <= i_opA or std_logic_vector(to_s32(i_itype));
                 else -- OR
                     o_res <= i_opA or i_opB;
                 end if;
             when "111" =>
                 if (i_opcode = cAluImmedOpcode) then -- ANDI
-                    o_res <= i_opA and std_logic_vector(to_s32(itype));
+                    o_res <= i_opA and std_logic_vector(to_s32(i_itype));
                 else -- AND
                     o_res <= i_opA and i_opB;
                 end if;
