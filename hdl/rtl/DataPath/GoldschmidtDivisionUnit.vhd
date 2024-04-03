@@ -37,8 +37,9 @@ architecture rtl of GoldschmidtDivisionUnit is
         snum   : std_logic;
         denom  : unsigned(63 downto 0);
         sden   : std_logic;
-        cdenom : unsigned(63 downto 0);
-        remdr  : unsigned(63 downto 0);
+        cnum   : unsigned(31 downto 0);
+        cdenom : unsigned(31 downto 0);
+        remdr  : unsigned(31 downto 0);
         fval   : unsigned(63 downto 0);
         iter   : natural range 0 to 4;
     end record gdu_engine_t;
@@ -73,9 +74,15 @@ begin
                         if (i_signed = '1' and i_num(31) = '1') then
                             gdu_engine.num  <= unsigned(-signed(i_num)) & x"00000000";
                             gdu_engine.snum <= '1';
+
+                            -- Preserve original numerator for remainder calculation.
+                            gdu_engine.cnum <= unsigned(-signed(i_num));
                         else
                             gdu_engine.num  <= unsigned(i_num) & x"00000000";
                             gdu_engine.snum <= '0';
+
+                            -- Preserve original numerator for remainder calculation.
+                            gdu_engine.cnum <= unsigned(i_num);
                         end if;
     
                         if (i_signed = '1' and i_denom(31) = '1') then
@@ -83,13 +90,13 @@ begin
                             gdu_engine.sden  <= '1';
     
                             -- Preserve original denominator for remainder calculation.
-                            gdu_engine.cdenom <= unsigned(-signed(i_denom)) & x"00000000";
+                            gdu_engine.cdenom <= unsigned(-signed(i_denom));
                         else
                             gdu_engine.denom <= unsigned(i_denom) & x"00000000";
                             gdu_engine.sden  <= '0';
     
                             -- Preserve original denominator for remainder calculation.
-                            gdu_engine.cdenom <= unsigned(i_denom) & x"00000000";
+                            gdu_engine.cdenom <= unsigned(i_denom);
                         end if;
                     end if;
 
@@ -123,8 +130,7 @@ begin
                     else
                         gdu_engine.state <= POST_PROCESS;
                         -- Do remainder calculation here.
-                        gdu_engine.remdr <= unsigned(shape(std_logic_vector(
-                            resize(unsigned(gdu_engine.num(31 downto 0)), 64) * gdu_engine.cdenom), 95, 32));
+                        gdu_engine.remdr <= gdu_engine.cnum - shape(gdu_engine.num(63 downto 32) * gdu_engine.cdenom, 31, 0);
                     end if;
                     
                 when STAGE1 =>
@@ -154,7 +160,7 @@ begin
         end if;
     end process DivisionAlgorithm;
 
-    o_rem   <= std_logic_vector(gdu_engine.remdr(63 downto 32));
+    o_rem   <= std_logic_vector(gdu_engine.remdr);
     o_div   <= std_logic_vector(gdu_engine.num(63 downto 32));
     o_valid <= bool2bit(gdu_engine.state = DONE);
     

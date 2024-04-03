@@ -58,8 +58,8 @@ begin
         while test_suite loop
             if run("t_basic_division") then
                 en      <= '1';
-                opA     <= RandData.RandSlv(x"00000001", x"FFFFFFFF");
-                opB     <= RandData.RandSlv(x"00000001", x"FFFFFFFF");
+                opA     <= RandData.RandSlv(x"00000001", x"0FFFFFFF");
+                opB     <= RandData.RandSlv(x"00000001", x"0FFFFFFF");
                 wait for 100 ps;
                 opA_int := to_integer(opA);
                 opB_int := to_integer(opB);

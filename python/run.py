@@ -2,7 +2,7 @@ from vunit import VUnit
 from packager import get_vhdl_files
 
 # Create VUnit instance by parsing command line arguments
-vu = VUnit.from_argv()
+vu = VUnit.from_argv(['--gtkwave-fmt', 'ghw'])
 
 # Optionally add VUnit's builtin HDL utilities for checking, logging, communication...
 # See http://vunit.github.io/hdl_libraries.html.
