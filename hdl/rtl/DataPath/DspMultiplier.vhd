@@ -75,6 +75,7 @@ begin
                     if (i_en = '0') then
                         state <= IDLE;
                     end if;
+
                     case i_funct3 is
                         when cMulFunct3 =>
                             o_result <= std_logic_vector(resultExtended(31 downto 0));
@@ -85,15 +86,15 @@ begin
                         when others =>
                             o_result <= std_logic_vector(resultExtended(63 downto 32));
                     end case;
-                    o_done <= '1';
     
                 when others =>
                     state <= IDLE;
-                    o_done <= '0';
                     
             end case;
         end if;
     end process MultiplierImplementation;
+
+    o_done <= bool2bit(state = DONE);
     
     
 end architecture rtl;

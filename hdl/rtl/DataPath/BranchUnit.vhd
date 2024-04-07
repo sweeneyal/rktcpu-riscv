@@ -61,6 +61,7 @@ begin
             o_bexcept <= '0';
         elsif (i_opcode = cBranchOpcode) then
             o_jtaken <= '0';
+            o_bexcept <= '0';
             case i_funct3 is
                 when "000" =>
                     o_done   <= '1';

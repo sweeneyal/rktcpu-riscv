@@ -123,12 +123,12 @@ begin
                 opcode <= cStoreOpcode;
                 opA    <= to_slv(4, 32);
                 itype  <= (others => '0');
-                stype  <= to_slv(4, 13);
+                stype  <= to_slv(4, 12);
                 funct3 <= "010";
                 ack    <= '0';
                 rvalid <= '0';
                 rdata  <= (others => '0');
-                wdata  <= RandData.RandSlv(0, 2**32 - 1, 32);
+                wdata  <= RandData.RandSlv(x"00000000", x"FFFFFFFF");
 
                 wait until rising_edge(clk);
                 wait for 100 ps;
@@ -141,18 +141,21 @@ begin
                 opcode <= cStoreOpcode;
                 opA    <= to_slv(4, 32);
                 itype  <= (others => '0');
-                stype  <= to_slv(3, 13);
+                stype  <= to_slv(3, 12);
                 funct3 <= "010";
                 ack    <= '0';
                 rvalid <= '0';
                 rdata  <= (others => '0');
-                wdata  <= RandData.RandSlv(0, 2**32 - 1, 32);
+                wdata  <= RandData.RandSlv(x"00000000", x"FFFFFFFF");
 
                 wait until rising_edge(clk);
                 wait for 100 ps;
                 check(addr  = std_logic_vector(s32_t(opA) + to_s32(stype)));
+                report "Checking MWEN";
                 check(mwen  = "1111");
+                report "Checking MEN";
                 check(men   = '1');
+                report "Checking MSALN";
                 check(msaln = '1');
                 -- For our purposes, misaligned memory stores are abstracted to say that the 
                 -- trap handler will go ahead and perform the load/store.
@@ -162,12 +165,12 @@ begin
                 opcode <= cStoreOpcode;
                 opA    <= to_slv(4, 32);
                 itype  <= (others => '0');
-                stype  <= to_slv(4, 13);
+                stype  <= to_slv(4, 12);
                 funct3 <= "010";
                 ack    <= '0';
                 rvalid <= '0';
                 rdata  <= (others => '0');
-                wdata  <= RandData.RandSlv(0, 2**32 - 1, 32);
+                wdata  <= RandData.RandSlv(x"00000000", x"FFFFFFFF");
 
                 wait until rising_edge(clk);
                 wait for 100 ps;

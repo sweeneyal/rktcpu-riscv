@@ -144,7 +144,17 @@ begin
                     gdu_engine.state <= DONE;
                     if gdu_engine.snum /= gdu_engine.sden then
                         gdu_engine.num <= unsigned(-signed(gdu_engine.num));
-                        gdu_engine.remdr <= unsigned(-signed(gdu_engine.remdr));
+
+                        -- If the signs are different, this changes the remainder.
+                        if gdu_engine.snum = '1' then
+                            gdu_engine.remdr <= unsigned(-signed(gdu_engine.remdr));
+                        end if;
+                    else
+                        -- If the signs are both positive, don't do anything to the remainder
+                        -- Else, if they're both negative, negate the remainder
+                        if gdu_engine.snum = '1' then
+                            gdu_engine.remdr <= unsigned(-signed(gdu_engine.remdr));
+                        end if;
                     end if;
                     
                 when DONE =>

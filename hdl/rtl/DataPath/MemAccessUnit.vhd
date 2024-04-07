@@ -97,8 +97,8 @@ begin
                     mengine.misalign <= misalign;
                     if misalign = '1' then
                         mengine.state <= IDLE;
-                        mengine.en    <= '0';
-                        mengine.wen   <= (others => '0');
+                        mengine.en    <= '1';
+                        mengine.wen   <= wen;
                     elsif i_opcode = cLoadOpcode then
                         mengine.state <= LOAD_DATA;
                         mengine.en    <= '1';

@@ -63,6 +63,7 @@ begin
                         wait for 100 ps;
                     end loop;
 
+                    report "Testing FUNCT " & to_hstring(funct3);
                     check(mdone = '1');
                     case funct3 is
                         when cMulFunct3 =>
@@ -74,11 +75,11 @@ begin
                             check(result = mresult);
                         
                         when cMulhsuFunct3 =>
-                            result := shape(std_logic_vector(resize(signed(opA), 64) * resize(signed(opB), 64)), 63, 32);
+                            result := shape(std_logic_vector(resize(signed(opA), 64) * signed(resize(unsigned(opB), 64))), 63, 32);
                             check(result = mresult);
 
                         when cMulhuFunct3 =>
-                            result := shape(std_logic_vector(resize(signed(opA), 64) * resize(signed(opB), 64)), 63, 32);
+                            result := shape(std_logic_vector(resize(unsigned(opA), 64) * resize(unsigned(opB), 64)), 63, 32);
                             check(result = mresult);
 
                         when others =>
@@ -92,6 +93,7 @@ begin
                     wait until rising_edge(clk);
                     wait for 100 ps;
                 end loop;
+                report "All tests done.";
             end if;
         end loop;
         test_runner_cleanup(runner);
