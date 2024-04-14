@@ -6,6 +6,9 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
+library scrv;
+    use scrv.ControlEntities.all;
+
 entity SimpleFifo is
     generic (
         cAddressWidth : natural;
@@ -30,14 +33,16 @@ entity SimpleFifo is
 end entity SimpleFifo;
 
 architecture rtl of SimpleFifo is
-    signal empty  : std_logic;
-    signal aempty : std_logic;
-    signal afull  : std_logic;
-    signal full   : std_logic;
-    signal addra  : std_logic_vector(cAddressWidth - 1 downto 0);
-    signal addrb  : std_logic_vector(cAddressWidth - 1 downto 0);
-    signal enb    : std_logic;
-    signal wena   : std_logic;
+    signal empty  : std_logic := '0';
+    signal aempty : std_logic := '0';
+    signal afull  : std_logic := '0';
+    signal full   : std_logic := '0';
+    signal addra  : std_logic_vector(cAddressWidth - 1 downto 0) := (others => '0');
+    signal addrb  : std_logic_vector(cAddressWidth - 1 downto 0) := (others => '0');
+    signal enb    : std_logic := '0';
+    signal wena   : std_logic := '0';
+    signal head   : natural range 0 to 2 ** cAddressWidth - 1 := 0;
+    signal tail   : natural range 0 to 2 ** cAddressWidth - 1 := 0;
 begin
 
     wena <= not full and i_dvalid;
@@ -49,7 +54,7 @@ begin
                 head <= 0;
             else
                 if (wena = '1') then
-                    if head < cDepth - 1 then
+                    if head < 2 ** cAddressWidth - 1 then
                         head <= head + 1;
                     else
                         head <= 0;
@@ -61,14 +66,14 @@ begin
 
     enb <= not empty and i_pop;
 
-    FifoHeadControl: process(i_clk)
+    FifoTailControl: process(i_clk)
     begin
         if rising_edge(i_clk) then
             if (i_resetn = '0') then
                 tail <= 0;
             else
                 if (enb = '1') then
-                    if tail < cDepth - 1 then
+                    if tail < 2 ** cAddressWidth - 1 then
                         tail <= tail + 1;
                     else
                         tail <= 0;
@@ -78,18 +83,19 @@ begin
 
             o_dvalid <= enb;
         end if;
-    end process FifoHeadControl;
+    end process FifoTailControl;
 
     FlagComputation: process(head, tail)
+        variable size : natural range 0 to 2 ** cAddressWidth - 1 := 0;
     begin
         if tail > head then
-            size := head + cDepth - tail;
+            size := head + 2 ** cAddressWidth - 1 - tail;
         else
             size := head - tail;
         end if;
 
-        full   <= bool2bit(size = cDepth - 1);
-        afull  <= bool2bit(size = cDepth - 2);
+        full   <= bool2bit(size = 2 ** cAddressWidth - 1);
+        afull  <= bool2bit(size = 2 ** cAddressWidth - 2);
         aempty <= bool2bit(size = 1);
         empty  <= bool2bit(size = 0);
     end process FlagComputation;
@@ -105,7 +111,7 @@ begin
     eBram : DualPortBram
     generic map (
         cAddressWidth => cAddressWidth,
-        cMaxAddress   => 2 ** cAddressWidth - 1
+        cMaxAddress   => 2 ** cAddressWidth - 1,
         cDataWidth    => cDataWidth
     ) port map (
         i_clk => i_clk,
@@ -114,7 +120,7 @@ begin
         i_ena    => wena,
         i_wena   => wena,
         i_wdataa => i_data,
-        o_rdataa => open
+        o_rdataa => open,
 
         i_addrb  => addrb,
         i_enb    => enb,

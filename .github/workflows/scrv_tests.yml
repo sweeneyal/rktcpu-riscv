@@ -1,0 +1,17 @@
+name: scrv_tests
+
+on:
+    push:
+    pull_request:
+
+jobs:
+
+    action:
+        runs-on: ubuntu-latest
+        steps:
+    
+        - uses: actions/checkout@v2
+    
+        - uses: docker://ghdl/vunit:mcode
+          with:
+            args: python/run.py

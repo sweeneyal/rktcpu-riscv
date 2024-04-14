@@ -41,5 +41,5 @@ def package_entities(directory, packageName):
         pkg.write('end package {};'.format(packageName))
 
 
-#package_entities('hdl/rtl/Control', 'CsrEntities')
+package_entities('hdl/rtl/Control', 'ControlEntities')
 package_entities('hdl/rtl/DataPath', 'DataPathEntities')

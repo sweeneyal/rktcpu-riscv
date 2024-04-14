@@ -7,7 +7,7 @@ library universal;
     use universal.CommonTypes.all;
 
 library scrv;
-    use scrv.Control.all;
+    use scrv.ControlEntities.all;
 
 entity FetchEngine is
     port (
@@ -35,7 +35,10 @@ architecture rtl of FetchEngine is
         state  : state_t;
         pc     : unsigned(31 downto 0);
     end record fetch_engine_t;
-    signal fetch_engine : fetch_engine_t;
+    signal fetch_engine : fetch_engine_t := (
+        state => FETCH_RESET,
+        pc    => (others => '0')
+    );
 
     signal resetn : std_logic;
     signal empty  : std_logic;
@@ -116,7 +119,7 @@ begin
         o_dvalid => o_ivalid
     );
 
-    o_pc    <= fetch_engine.pc;
+    o_pc    <= std_logic_vector(fetch_engine.pc);
     -- This will try to prevent unnecessary fetches when the PC changes.
     o_pcren <= bool2bit(fetch_engine.state = FETCH_REQUEST and i_pcwen = '0');
     o_empty <= empty;

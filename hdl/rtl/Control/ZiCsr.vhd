@@ -7,7 +7,8 @@ library universal;
     use universal.CommonTypes.all;
 
 library scrv;
-    use scrv.Control.all;
+    use scrv.RiscVDefinitions.all;
+    use scrv.ControlEntities.all;
     use scrv.CsrDefinitions.all;
 
 entity ZiCsr is
@@ -15,13 +16,13 @@ entity ZiCsr is
         i_clk     : in std_logic;
         i_resetn  : in std_logic;
         i_opcode  : in std_logic_vector(6 downto 0);
-        i_funct3  : in std_logic;
+        i_funct3  : in std_logic_vector(2 downto 0);
         i_csraddr : in std_logic_vector(11 downto 0);
         i_rd      : in std_logic_vector(4 downto 0);
         i_rs1     : in std_logic_vector(4 downto 0);
         i_opA     : in std_logic_vector(31 downto 0);
         o_csrr    : out std_logic_vector(31 downto 0);
-        o_csren   : out std_logic;
+        o_csrren  : out std_logic;
         o_csrdone : out std_logic;
         i_instret : in std_logic
     );
@@ -42,6 +43,9 @@ architecture rtl of ZiCsr is
         fault    : std_logic;
     end record zicsr_engine_t;
     signal zicsr_engine : zicsr_engine_t;
+
+    -- TODO: Remove for actual priv implementation
+    signal priv : std_logic_vector(2 downto 0) := "100";
 begin
 
     StateMachine: process(i_clk)
@@ -80,7 +84,7 @@ begin
                     when ZICSR_WRITE | ZICSR_SET | ZICSR_CLEAR =>
                         o_csrren         <= '0';
                         zicsr_engine.wen <= '0';
-                        case substate is
+                        case zicsr_engine.substate is
                             -- Always read the CSR, but only plan to write it if the destination reg is nonzero.
                             when READ_CSR =>
                                 if (i_rd /= "00000") then
@@ -165,10 +169,9 @@ begin
                 mcsr.mimpid    <= (others => '0');
                 mcsr.mhartid   <= (others => '0');
                 mcsr.mstatus   <= (others => '0');
-                mcsr.mstatush  <= (others => '0');
                 mcsr.mtvec     <= (others => '0');
-                mcsr.medeleg   <= (others => '0');
-                mcsr.mideleg   <= (others => '0');
+                -- mcsr.medeleg   <= (others => '0');
+                -- mcsr.mideleg   <= (others => '0');
                 mcsr.mip       <= (others => '0');
                 mcsr.mie       <= (others => '0');
 
@@ -176,27 +179,27 @@ begin
                 mcsr.minstret <= (others => '0');
                 for ii in 3 to 31 loop
                     mcsr.mhpmcounters(ii) <= (others => '0');
+                    mcsr.mhpmevents(ii)   <= (others => '0');
                 end loop;
-                mcsr.mhpmevents    <= (others => '0');
                 mcsr.mcounteren    <= (others => '0');
-                mcsr.mcountinhibit <= (others => '0');
+                -- mcsr.mcountinhibit <= (others => '0');
                 
                 mcsr.mscratch   <= (others => '0');
                 mcsr.mepc       <= (others => '0');
                 mcsr.mcause     <= (others => '0');
                 mcsr.mtval      <= (others => '0');
                 mcsr.mconfigptr <= (others => '0');
-                mcsr.menvcfg    <= (others => '0');
-                mcsr.mseccfg    <= (others => '0');
+                -- mcsr.menvcfg    <= (others => '0');
+                -- mcsr.mseccfg    <= (others => '0');
 
                 mcsr.mtime    <= (others => '0');
                 mcsr.mtimecmp <= (others => '0');
             else
-                mcsr.mcycle <= std_logic_vector(unsigned(mcsr.mcycle) + 1);
+                mcsr.mcycle <= unsigned(mcsr.mcycle) + to_unsigned(1, 64);
 
-                if (en = '1') then
+                if (zicsr_engine.en = '1') then
                     handle_accesses(
-                        i_priv  => "100",
+                        i_priv  => priv,
                         i_addr  => i_csraddr,
                         i_wen   => zicsr_engine.wen,
                         i_wdata => zicsr_engine.wdata,
@@ -206,7 +209,7 @@ begin
                     );
                 else
                     if (i_instret = '1') then
-                        mcsr.minstret <= std_logic_vector(unsigned(mcsr.minstret) + 1);
+                        mcsr.minstret <= unsigned(mcsr.minstret) + to_unsigned(1, 64);
                     end if;
                 end if;
             end if;

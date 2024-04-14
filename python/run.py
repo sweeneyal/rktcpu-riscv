@@ -28,4 +28,6 @@ for file in files:
     tb.add_source_file(file)
 
 # Run vunit function
+vu.add_compile_option('ghdl.a_flags', ['-frelaxed'])
+vu.set_sim_option('ghdl.elab_flags', ['-frelaxed'])
 vu.main()

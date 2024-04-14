@@ -7,7 +7,8 @@ library universal;
     use universal.CommonTypes.all;
 
 library scrv;
-    use scrv.Control.all;
+    use scrv.ControlEntities.all;
+    use scrv.RiscVDefinitions.all;
 
 entity ExecuteEngine is
     port (
@@ -59,8 +60,12 @@ architecture rtl of ExecuteEngine is
     signal btype  : std_logic_vector(12 downto 0);
     signal utype  : std_logic_vector(19 downto 0);
     signal jtype  : std_logic_vector(20 downto 0);
+
+    signal pcwen : std_logic;
 begin
     
+    pcwen <= i_jtaken or i_btaken;
+
     opcode <= get_opcode(execute_engine.instr);
     rs1    <= get_funct3(execute_engine.instr);
     rs2    <= get_funct7(execute_engine.instr);
@@ -84,7 +89,7 @@ begin
                         execute_engine.state <= EX_REQUEST;
                 
                     when EX_REQUEST =>
-                        if (i_valid = '1') then
+                        if (i_ivalid = '1') then
                             execute_engine.instr <= i_instr;
                             execute_engine.state <= EX_EXECUTE;
                         end if;
@@ -98,8 +103,8 @@ begin
                         elsif (i_done = '1') then
                             execute_engine.state <= EX_REQUEST;
 
-                            o_pcwen <= i_pcwen;
-                            if (i_jtaken or i_btaken) then
+                            o_pcwen <= pcwen;
+                            if (pcwen = '1') then
                                 execute_engine.pc <= unsigned(i_nxtpc);
                             end if;
                         end if;
