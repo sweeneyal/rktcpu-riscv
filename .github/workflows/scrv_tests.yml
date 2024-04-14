@@ -5,13 +5,18 @@ on:
     pull_request:
 
 jobs:
-
-    action:
+    
+    container-job:
         runs-on: ubuntu-latest
+        container: ghdl/vunit:mcode-master
         steps:
-    
-        - uses: actions/checkout@v2
-    
-        - uses: docker://ghdl/vunit:mcode
-          with:
-            args: python/run.py
+            - name: Install git on container
+              run: |
+                apt update
+                apt install -y git
+
+            - uses: actions/checkout@v3
+              with:
+                submodules: recursive
+                
+            - run: python ./python/run.py
