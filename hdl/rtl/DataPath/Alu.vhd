@@ -99,7 +99,7 @@ begin
 
     SetAluEnable: process(i_opcode)
     begin
-        o_valid <= Bool2Bit(i_opcode = cAluImmedOpcode or i_opcode = cAluOpcode);
+        o_valid <= Bool2Bit((i_opcode = cAluImmedOpcode) or (i_opcode = cAluOpcode and (i_funct7 = "0100000" or i_funct7 = "0000000")));
     end process SetAluEnable;
     
 end architecture rtl;

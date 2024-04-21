@@ -82,6 +82,7 @@ begin
     Stimuli: process
         variable RandData  : RandomPType;
         variable registers : register_map_t;
+        variable pc_v      : natural;
     begin
         test_runner_setup(runner, runner_cfg);
         while test_suite loop
@@ -125,9 +126,102 @@ begin
                 check(utype  = instr(31 downto 12));
                 check(jtype  = instr(31) & instr(19 downto 12) & instr(20) & instr(30 downto 21) & '0');
             elsif run("t_instr_req") then
-                check(false);
+                -- Create the environment
+                registers := generate_registers(x"00000001");
+                resetn <= '0';
+                instr  <= generate_instruction(registers);
+                ivalid <= '0';
+                done   <= '0';
+                jtaken <= '0';
+                btaken <= '0';
+                nxtpc  <= x"00000000";
+                
+                -- Apply and unapply reset.
+                wait until rising_edge(clk);
+                wait for 100 ps;
+                resetn <= '1';
+                wait for 100 ps;
+                check(ren = '1'); -- We should start requesting immediately
+
+                for ii in 0 to 31 loop
+                    wait until rising_edge(clk);
+                    wait for 100 ps;
+                    ivalid <= '1'; -- Request response
+                    done   <= '0';
+                    wait for 100 ps;
+                    check(ren = '0');
+    
+                    wait until rising_edge(clk);
+                    wait for 100 ps;
+                    done <= '1'; -- Instruction done
+                    wait for 100 ps;
+                    -- As soon as the instruction is done, we should be 
+                    -- making another request.
+                    check(ren = '1');
+                end loop;
+
             elsif run("t_pc_update") then
-                check(false);
+                -- Create the environment
+                registers := generate_registers(x"00000001");
+                resetn <= '0';
+                instr  <= generate_instruction(registers, get_opcode_index(cBranchOpcode));
+                ivalid <= '0';
+                done   <= '0';
+                jtaken <= '0';
+                btaken <= '0';
+                nxtpc  <= x"00000000";
+                pc_v   := 0;
+                
+                -- Apply and unapply reset.
+                wait until rising_edge(clk);
+                wait for 100 ps;
+                resetn <= '1';
+                wait for 100 ps;
+                check(ren = '1'); -- We should start requesting immediately
+
+                for ii in 0 to 31 loop
+                    wait until rising_edge(clk);
+                    wait for 100 ps;
+                    --report "Pc should be " & natural'image(pc_v);
+                    --report "Pc currently is " & natural'image(to_natural(pc));
+                    check(pc = to_slv(pc_v, 32));
+                    check(pcwen = '0');
+                    ivalid <= '1'; -- Request response
+                    done   <= '0';
+                    wait for 100 ps;
+                    check(ren = '0');
+    
+                    wait until rising_edge(clk);
+                    wait for 100 ps;
+                    done <= '1'; -- Instruction done
+                    wait for 100 ps;
+                    -- As soon as the instruction is done, we should be 
+                    -- making another request.
+                    check(ren = '1');
+                    pc_v := pc_v + 1;
+                end loop;
+
+                wait until rising_edge(clk);
+                wait for 100 ps;
+                ivalid <= '1'; -- Request response
+                done   <= '0';
+                wait for 100 ps;
+                check(ren = '0');
+
+                wait until rising_edge(clk);
+                wait for 100 ps;
+                nxtpc  <= x"FFFF0000";
+                btaken <= '1';
+                done   <= '1'; -- Instruction done
+                wait for 100 ps;
+                -- As soon as the instruction is done, we should be 
+                -- making another request, as well as indicating a new PC.
+                check(pcwen = '1');
+                check(ren = '1');
+                wait until rising_edge(clk);
+                wait for 100 ps;
+                done <= '0'; -- Instruction done
+                check(pc = x"FFFF0000");
             end if;
         end loop;
         test_runner_cleanup(runner);

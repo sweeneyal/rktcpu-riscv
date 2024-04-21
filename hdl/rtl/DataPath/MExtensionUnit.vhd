@@ -41,7 +41,7 @@ begin
         if rising_edge(i_clk) then
             mul_en <= '0';
             div_en <= '0';
-            if (i_opcode = cMulDivOpcode) then
+            if (i_opcode = cMulDivOpcode and i_funct7 = "0000001") then
                 if (i_funct3(2) = '1') then
                     div_en <= '1';
                 else

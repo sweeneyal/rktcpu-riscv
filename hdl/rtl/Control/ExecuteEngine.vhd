@@ -67,9 +67,14 @@ architecture rtl of ExecuteEngine is
     signal pcwen : std_logic;
 begin
     
-    pcwen <= i_jtaken or i_btaken;
-    o_ren <= i_done or execute_engine.done or bool2bit(execute_engine.state = EX_RESET and i_resetn = '1');
+    pcwen   <= i_jtaken or i_btaken;
+    o_pcwen <= pcwen;
+    -- Request new instruction when done with the previous one, when in the reset state and not actively being reset,
+    -- or when 
+    o_ren <= (i_done or execute_engine.done
+        or bool2bit(execute_engine.state = EX_RESET)) and i_resetn;
 
+    o_pc     <= std_logic_vector(execute_engine.pc);
     o_opcode <= get_opcode(instr);
     o_rd     <= get_rd(instr);
     o_rs1    <= get_rs1(instr);
@@ -101,6 +106,7 @@ begin
             if (i_resetn = '0') then
                 execute_engine.state <= EX_RESET;
                 execute_engine.done  <= '0';
+                execute_engine.pc    <= x"00000000";
             else
                 case execute_engine.state is
                     when EX_RESET =>
@@ -108,17 +114,19 @@ begin
                         execute_engine.done <= '0';
 
                     when EX_EXECUTE =>
+                        execute_engine.done <= '0';
                         if (ivalid = '1') then
-                            execute_engine.done <= '0';
                             if (opcode = cEcallOpcode) then
                                 execute_engine.state <= EX_SYSTEM;
                             elsif (opcode = cFenceOpcode) then
                                 -- TODO: Fences need to be supported for any parallelism
-                                execute_engine.done  <= '1';
+                                execute_engine.done <= '1';
+                                execute_engine.pc   <= execute_engine.pc + to_unsigned(1, 32);
                             elsif (i_done = '1') then
-                                o_pcwen <= pcwen;
                                 if (pcwen = '1') then
                                     execute_engine.pc <= unsigned(i_nxtpc);
+                                else
+                                    execute_engine.pc <= execute_engine.pc + to_unsigned(1, 32);
                                 end if;
                             end if;
                         end if;
@@ -127,9 +135,12 @@ begin
                         if to_natural(funct3) > 0 then
                             if (i_done = '1') then
                                 execute_engine.state <= EX_EXECUTE;
+                                execute_engine.pc <= execute_engine.pc + to_unsigned(1, 32);
                             end if;
+                        else
+                            execute_engine.done <= '1';
+                            execute_engine.pc <= execute_engine.pc + to_unsigned(1, 32);
                         end if;
-                        execute_engine.done <= '1';
                 end case;
             end if;
         end if;

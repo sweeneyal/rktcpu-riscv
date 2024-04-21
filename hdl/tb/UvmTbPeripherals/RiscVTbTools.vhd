@@ -26,7 +26,12 @@ package RiscVTbTools is
 
     function generate_registers(default_value : std_logic_vector(31 downto 0)) return register_map_t;
 
-    impure function generate_instruction(registers : register_map_t) return std_logic_vector;
+    impure function generate_instruction(
+        registers : register_map_t; 
+        forcedOpcode : integer := -1) 
+    return std_logic_vector;
+
+    function get_opcode_index(opcode : std_logic_vector(6 downto 0)) return integer;
     
 end package RiscVTbTools;
 
@@ -46,7 +51,10 @@ package body RiscVTbTools is
         return registers;
     end function;
     
-    impure function generate_instruction(registers : register_map_t) return std_logic_vector is
+    impure function generate_instruction(
+        registers : register_map_t; 
+        forcedOpcode : integer := -1) 
+    return std_logic_vector is
         variable RandData : RandomPType;
         variable valid_instruction : boolean := false;
         variable opcode_idx : natural;
@@ -68,8 +76,11 @@ package body RiscVTbTools is
             -- Each opcode then has a set of all possible valid instructions for these.
             -- Generate an instruction that could legally occur without incurring a 
             -- fault of some kind or using uninitialized (invalid) registers.
-            opcode_idx := RandData.RandInt(0, 11);
-            report "Opcode is " & natural'image(opcode_idx);
+            if forcedOpcode /= -1 then
+                opcode_idx := forcedOpcode;
+            else
+                opcode_idx := RandData.RandInt(0, 10);
+            end if;
             case opcode_idx is
                 when 0 =>
                     instruction(6 downto 0) := cBranchOpcode;
@@ -161,41 +172,71 @@ package body RiscVTbTools is
                     valid_instruction := true;
             
                 when 3 =>
-                    instruction(6 downto 0) := cAluOpcode;
-                    -- Pick a funct from 0 to 7
-                    funct3 := RandData.RandInt(0, 7);
-                    instruction(14 downto 12) := to_slv(funct3, 3);
-                    -- Based off funct3, randomly choose a funct7 if there are multiple options.
-                    if (funct3 = 0 or funct3 = 5) and (RandData.RandInt(0, 1) = 1) then
-                        funct7 := "0100000";
-                    else
-                        funct7 := "0000000";
-                    end if;
-                    instruction(31 downto 25) := funct7;
-                    -- Pick two registers to operate on
-                    while rs1 < 0 loop
-                        rs1 := RandData.RandInt(0, 31);
-                        if (not registers(rs1).valid) then -- Fix this
-                            rs1 := -1;
-                        end if;
-                    end loop;
-                    instruction(19 downto 15) := to_slv(rs1, 5);
-                    while rs2 < 0 loop
-                        rs2 := RandData.RandInt(0, 31);
-                        if (not registers(rs2).valid) then -- Fix this
-                            rs2 := -1;
-                        end if;
-                    end loop;
-                    instruction(24 downto 20) := to_slv(rs2, 5);
-                    -- Pick a destination address.
-                    while rd < 1 loop
+                    -- The muldiv opcode and ALU opcodes are the same.
+                    if (RandData.RandInt(0,7) = 0) then
+                        instruction(6 downto 0) := cMulDivOpcode;
+                        -- Pick a funct from 000, 001, 010, 100, 101
+                        funct3 := RandData.RandInt(0, 7);
+                        instruction(14 downto 12) := to_slv(funct3, 3);
+                        -- Pick source registers
+                        while rs1 < 0 loop
+                            rs1 := RandData.RandInt(0, 31);
+                            if (not registers(rs1).valid) then -- Fix this
+                                rs1 := -1;
+                            end if;
+                        end loop;
+                        instruction(19 downto 15) := to_slv(rs1, 5);
+                        while rs2 < 0 loop
+                            rs2 := RandData.RandInt(0, 31);
+                            if (not registers(rs2).valid or registers(rs2).value = x"00000000") then
+                                rs2 := -1;
+                            end if;
+                        end loop;
+                        instruction(24 downto 20) := to_slv(rs2, 5);
+                        -- Pick a destination register.
                         rd := RandData.RandInt(1, 31);
-                        if (not registers(rd).valid) then -- Fix this
-                            rd := -1;
+                        instruction(11 downto 7) := to_slv(rd, 5);
+                        -- Funct7 is the same for all.
+                        funct7 := "0000001";
+                        instruction(31 downto 25) := funct7;
+                        valid_instruction := true;
+                    else
+                        instruction(6 downto 0) := cAluOpcode;
+                        -- Pick a funct from 0 to 7
+                        funct3 := RandData.RandInt(0, 7);
+                        instruction(14 downto 12) := to_slv(funct3, 3);
+                        -- Based off funct3, randomly choose a funct7 if there are multiple options.
+                        if (funct3 = 0 or funct3 = 5) and (RandData.RandInt(0, 1) = 1) then
+                            funct7 := "0100000";
+                        else
+                            funct7 := "0000000";
                         end if;
-                    end loop;
-                    instruction(11 downto 7) := to_slv(rd, 5);
-                    valid_instruction := true;
+                        instruction(31 downto 25) := funct7;
+                        -- Pick two registers to operate on
+                        while rs1 < 0 loop
+                            rs1 := RandData.RandInt(0, 31);
+                            if (not registers(rs1).valid) then -- Fix this
+                                rs1 := -1;
+                            end if;
+                        end loop;
+                        instruction(19 downto 15) := to_slv(rs1, 5);
+                        while rs2 < 0 loop
+                            rs2 := RandData.RandInt(0, 31);
+                            if (not registers(rs2).valid) then -- Fix this
+                                rs2 := -1;
+                            end if;
+                        end loop;
+                        instruction(24 downto 20) := to_slv(rs2, 5);
+                        -- Pick a destination address.
+                        while rd < 1 loop
+                            rd := RandData.RandInt(1, 31);
+                            if (not registers(rd).valid) then -- Fix this
+                                rd := -1;
+                            end if;
+                        end loop;
+                        instruction(11 downto 7) := to_slv(rd, 5);
+                        valid_instruction := true;
+                    end if;
 
                 when 4 =>
                     instruction(6 downto 0) := cAluImmedOpcode;
@@ -328,42 +369,48 @@ package body RiscVTbTools is
                         valid_instruction := false; 
                     end if;
 
-                when 11 =>
-                    instruction(6 downto 0) := cMulDivOpcode;
-                    -- Pick a funct from 000, 001, 010, 100, 101
-                    funct3 := RandData.RandInt(0, 7);
-                    instruction(14 downto 12) := to_slv(funct3, 3);
-                    -- Pick source registers
-                    while rs1 < 0 loop
-                        rs1 := RandData.RandInt(0, 31);
-                        if (not registers(rs1).valid) then -- Fix this
-                            rs1 := -1;
-                        end if;
-                    end loop;
-                    instruction(19 downto 15) := to_slv(rs1, 5);
-                    while rs2 < 0 loop
-                        rs2 := RandData.RandInt(0, 31);
-                        if (not registers(rs2).valid or registers(rs2).value = x"00000000") then
-                            rs2 := -1;
-                        end if;
-                    end loop;
-                    instruction(24 downto 20) := to_slv(rs2, 5);
-                    -- Pick a destination register.
-                    rd := RandData.RandInt(1, 31);
-                    instruction(11 downto 7) := to_slv(rd, 5);
-                    -- Funct7 is the same for all.
-                    funct7 := "0000001";
-                    instruction(31 downto 25) := funct7;
-                    valid_instruction := true;
-
                 when others =>
                     report "Invalid instruction.";
                     valid_instruction := false;
-            
+
             end case;
+
+            if (forcedOpcode /= -1 and valid_instruction = false) then
+                assert false;
+            end if;
         end loop;
 
         return instruction;
+    end function;
+
+    function get_opcode_index(opcode : std_logic_vector(6 downto 0)) return integer is
+    begin
+        case opcode is
+            when cBranchOpcode =>
+                return 0;
+            when cLoadOpcode =>
+                return 1;
+            when cStoreOpcode =>
+                return 2;
+            when cAluOpcode => -- Also handles MULDIV
+                return 3;
+            when cAluImmedOpcode =>
+                return 4;
+            when cJumpOpcode =>
+                return 5;
+            when cJumpRegOpcode =>
+                return 6;
+            when cLoadUpperOpcode =>
+                return 7;
+            when cAuipcOpcode =>
+                return 8;
+            when cFenceOpcode =>
+                return 9;
+            when cEcallOpcode =>
+                return 10;
+            when others =>
+                return -1;
+        end case;
     end function;
     
 end package body RiscVTbTools;

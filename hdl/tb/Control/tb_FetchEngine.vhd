@@ -108,8 +108,6 @@ begin
                 ivalid_i <= '1';
                 check(ivalid_o = '1');
                 check(instr_o = history(0));
-            elsif run("t_more_complicated") then
-                check(false);
             end if;
         end loop;
         test_runner_cleanup(runner);
