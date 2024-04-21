@@ -17,6 +17,9 @@ library scrv;
     use scrv.RiscVDefinitions.all;
     use scrv.ControlEntities.all;
 
+library tb;
+    use tb.RiscVTbTools.all;
+
 entity tb_ExecuteEngine is
     generic (runner_cfg : string);
 end entity tb_ExecuteEngine;
@@ -77,7 +80,8 @@ begin
     );
 
     Stimuli: process
-        variable RandData : RandomPType;
+        variable RandData  : RandomPType;
+        variable registers : register_map_t;
     begin
         test_runner_setup(runner, runner_cfg);
         while test_suite loop
@@ -86,14 +90,40 @@ begin
             --     Instruction Request behavior
             --     PC update behavior
             if run("t_decode") then
+                registers := generate_registers(x"00000001");
                 resetn <= '0';
-                instr  <= RandData.RandSlv(x"00000000", x"FFFFFFFF");
+                instr  <= generate_instruction(registers);
                 ivalid <= '0';
                 done   <= '0';
                 jtaken <= '0';
                 btaken <= '0';
-                nxtpc  <= RandData.RandSlv(x"00000000", x"FFFFFFFF");
-                check(false);
+                nxtpc  <= x"00000000";
+                
+                wait until rising_edge(clk);
+                wait for 100 ps;
+                resetn <= '1';
+                wait for 100 ps;
+                check(ren = '1');
+
+                wait until rising_edge(clk);
+                wait for 100 ps;
+                ivalid <= '1';
+
+                wait until rising_edge(clk);
+                wait for 100 ps;
+                ivalid <= '0';
+                check(ren    = '0');
+                check(opcode = instr(6 downto 0));
+                check(rs1    = instr(19 downto 15));
+                check(rs2    = instr(24 downto 20));
+                check(rd     = instr(11 downto 7));
+                check(funct3 = instr(14 downto 12));
+                check(funct7 = instr(31 downto 25));
+                check(itype  = instr(31 downto 20));
+                check(stype  = instr(31 downto 25) & instr(11 downto 7));
+                check(btype  = instr(31) & instr(7) & instr(30 downto 25) & instr(11 downto 8) & '0');
+                check(utype  = instr(31 downto 12));
+                check(jtype  = instr(31) & instr(19 downto 12) & instr(20) & instr(30 downto 21) & '0');
             elsif run("t_instr_req") then
                 check(false);
             elsif run("t_pc_update") then
