@@ -48,11 +48,20 @@ architecture rtl of ZiCsr is
     signal priv : std_logic_vector(2 downto 0) := "100";
 begin
 
+    o_csrdone <= bool2bit(zicsr_engine.state = ZICSR_DONE);
+
     StateMachine: process(i_clk)
     begin
         if rising_edge(i_clk) then
             if (i_resetn = '0') then
                 zicsr_engine.state <= ZICSR_RESET;
+                zicsr_engine.en    <= '0';
+                zicsr_engine.wen   <= '0';
+                zicsr_engine.wdata <= x"00000000";
+                zicsr_engine.csrr  <= x"00000000";
+                zicsr_engine.fault <= '0';
+
+                o_csrren <= '0';
             else
                 case zicsr_engine.state is
                     -- Start in ZICSR_RESET to ensure same boot up process
@@ -61,6 +70,7 @@ begin
                     
                     -- Wait for an appropriate instruction to start the atomic read-write process
                     when ZICSR_WAIT_FOR_INSTR =>
+                        o_csrren <= '0';
                         if (i_opcode = cEcallOpcode) then
                             -- Assume a read for all Ecall opcodes
                             zicsr_engine.en <= '1';
@@ -149,7 +159,7 @@ begin
                         end case;
 
                     when others =>
-                    zicsr_engine.state <= ZICSR_WAIT_FOR_INSTR;
+                        zicsr_engine.state <= ZICSR_WAIT_FOR_INSTR;
                 
                 end case;                
             end if;
