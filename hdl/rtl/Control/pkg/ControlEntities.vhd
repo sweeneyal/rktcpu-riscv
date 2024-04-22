@@ -28,6 +28,40 @@ component FetchEngine is
     );
 end component FetchEngine;
 
+component ControlEngine is
+    port (
+        -- System level signals
+        i_clk    : in std_logic;
+        i_resetn : in std_logic;
+
+        -- Bus Signals
+        o_instr_addr   : out std_logic_vector(31 downto 0);
+        o_instr_ren    : out std_logic;
+        o_instr_wen    : out std_logic_vector(3 downto 0);
+        o_instr_wdata  : out std_logic_vector(31 downto 0);
+        i_instr_rdata  : in std_logic_vector(31 downto 0);
+        i_instr_rvalid : in std_logic;
+
+        -- Datapath Signals
+        o_dpath_pc     : out std_logic_vector(31 downto 0);
+        o_dpath_opcode : out std_logic_vector(6 downto 0);
+        o_dpath_rs1    : out std_logic_vector(4 downto 0);
+        o_dpath_rs2    : out std_logic_vector(4 downto 0);
+        o_dpath_rd     : out std_logic_vector(4 downto 0);
+        o_dpath_funct3 : out std_logic_vector(2 downto 0);
+        o_dpath_funct7 : out std_logic_vector(6 downto 0);
+        o_dpath_itype  : out std_logic_vector(11 downto 0);
+        o_dpath_stype  : out std_logic_vector(11 downto 0);
+        o_dpath_btype  : out std_logic_vector(12 downto 0);
+        o_dpath_utype  : out std_logic_vector(19 downto 0);
+        o_dpath_jtype  : out std_logic_vector(20 downto 0);
+        i_dpath_done   : in std_logic;
+        i_dpath_jtaken : in std_logic;
+        i_dpath_btaken : in std_logic;
+        i_dpath_nxtpc  : in std_logic_vector(31 downto 0)
+    );
+end component ControlEngine;
+
 component ExecuteEngine is
     port (
         i_clk    : in std_logic;

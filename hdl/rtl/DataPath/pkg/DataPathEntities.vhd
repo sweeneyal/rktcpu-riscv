@@ -41,6 +41,40 @@ component Alu is
     );
 end component Alu;
 
+component DataPath is
+    port (
+        -- System level signals
+        i_clk    : in std_logic;
+        i_resetn : in std_logic;
+
+        -- Bus Signals
+        o_data_addr   : out std_logic_vector(31 downto 0);
+        o_data_ren    : out std_logic;
+        o_data_wen    : out std_logic_vector(3 downto 0);
+        o_data_wdata  : out std_logic_vector(31 downto 0);
+        i_data_rdata  : in std_logic_vector(31 downto 0);
+        i_data_rvalid : in std_logic;
+
+        -- Datapath Signals
+        i_dpath_pc     : in std_logic_vector(31 downto 0);
+        i_dpath_opcode : in std_logic_vector(6 downto 0);
+        i_dpath_rs1    : in std_logic_vector(4 downto 0);
+        i_dpath_rs2    : in std_logic_vector(4 downto 0);
+        i_dpath_rd     : in std_logic_vector(4 downto 0);
+        i_dpath_funct3 : in std_logic_vector(2 downto 0);
+        i_dpath_funct7 : in std_logic_vector(6 downto 0);
+        i_dpath_itype  : in std_logic_vector(11 downto 0);
+        i_dpath_stype  : in std_logic_vector(11 downto 0);
+        i_dpath_btype  : in std_logic_vector(12 downto 0);
+        i_dpath_utype  : in std_logic_vector(19 downto 0);
+        i_dpath_jtype  : in std_logic_vector(20 downto 0);
+        o_dpath_done   : out std_logic;
+        o_dpath_jtaken : out std_logic;
+        o_dpath_btaken : out std_logic;
+        o_dpath_nxtpc  : out std_logic_vector(31 downto 0)
+    );
+end component DataPath;
+
 component MExtensionUnit is
     port (
         i_clk    : in std_logic;
