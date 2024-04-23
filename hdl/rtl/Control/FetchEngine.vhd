@@ -54,6 +54,7 @@ begin
         if rising_edge(i_clk) then
             if (i_resetn = '0') then
                 fetch_engine.state <= FETCH_RESET;
+                fetch_engine.pc    <= x"00000000";
             else
                 case fetch_engine.state is
                     -- Reset the FIFO and start requesting more data.
@@ -83,7 +84,7 @@ begin
                                 if (afull = '1') then
                                     fetch_engine.state <= FETCH_IDLE;
                                 end if;
-                                fetch_engine.pc <= fetch_engine.pc + 1;
+                                fetch_engine.pc <= fetch_engine.pc + 4;
                             end if;
                         end if;
 

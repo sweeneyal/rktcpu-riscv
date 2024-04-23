@@ -95,14 +95,14 @@ begin
                 history(1) := RandData.RandSlv(x"00000000", x"FFFFFFFF");
                 instr_i <= history(1);
                 check(pcren = '1');
-                check(pc_o = x"00000001");
+                check(pc_o = x"00000004");
                 -- Meanwhile, start a read for the first instruction.
                 ren <= '1';
 
                 wait until rising_edge(clk);
                 wait for 100 ps;
                 check(pcren = '1');
-                check(pc_o = x"00000002");
+                check(pc_o = x"00000008");
                 history(2) := RandData.RandSlv(x"00000000", x"FFFFFFFF");
                 instr_i <= history(2);
                 ivalid_i <= '1';

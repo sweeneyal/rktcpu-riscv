@@ -90,5 +90,8 @@ begin
         i_btaken => i_dpath_btaken,
         i_nxtpc  => i_dpath_nxtpc
     );
+
+    o_instr_wdata <= x"00000000";
+    o_instr_wen <= "0000";
     
 end architecture rtl;

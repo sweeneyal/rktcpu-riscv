@@ -32,6 +32,36 @@ package RiscVTbTools is
     return std_logic_vector;
 
     function get_opcode_index(opcode : std_logic_vector(6 downto 0)) return integer;
+
+    procedure simulate_instruction(
+        variable registers : inout register_map_t;
+
+        -- Bus Signals
+        signal o_data_addr   : out std_logic_vector(31 downto 0);
+        signal o_data_ren    : out std_logic;
+        signal o_data_wen    : out std_logic_vector(3 downto 0);
+        signal o_data_wdata  : out std_logic_vector(31 downto 0);
+        signal i_data_rdata  : in std_logic_vector(31 downto 0);
+        signal i_data_rvalid : in std_logic;
+
+        -- Datapath Signals
+        signal i_dpath_pc     : in std_logic_vector(31 downto 0);
+        signal i_dpath_opcode : in std_logic_vector(6 downto 0);
+        signal i_dpath_rs1    : in std_logic_vector(4 downto 0);
+        signal i_dpath_rs2    : in std_logic_vector(4 downto 0);
+        signal i_dpath_rd     : in std_logic_vector(4 downto 0);
+        signal i_dpath_funct3 : in std_logic_vector(2 downto 0);
+        signal i_dpath_funct7 : in std_logic_vector(6 downto 0);
+        signal i_dpath_itype  : in std_logic_vector(11 downto 0);
+        signal i_dpath_stype  : in std_logic_vector(11 downto 0);
+        signal i_dpath_btype  : in std_logic_vector(12 downto 0);
+        signal i_dpath_utype  : in std_logic_vector(19 downto 0);
+        signal i_dpath_jtype  : in std_logic_vector(20 downto 0);
+        signal o_dpath_done   : out std_logic;
+        signal o_dpath_jtaken : out std_logic;
+        signal o_dpath_btaken : out std_logic;
+        signal o_dpath_nxtpc  : out std_logic_vector(31 downto 0)
+    );
     
 end package RiscVTbTools;
 
@@ -412,5 +442,123 @@ package body RiscVTbTools is
                 return -1;
         end case;
     end function;
+
+    procedure simulate_instruction(
+        variable registers : inout register_map_t;
+
+        -- Bus Signals
+        signal o_data_addr   : out std_logic_vector(31 downto 0);
+        signal o_data_ren    : out std_logic;
+        signal o_data_wen    : out std_logic_vector(3 downto 0);
+        signal o_data_wdata  : out std_logic_vector(31 downto 0);
+        signal i_data_rdata  : in std_logic_vector(31 downto 0);
+        signal i_data_rvalid : in std_logic;
+
+        -- Datapath Signals
+        signal i_dpath_pc     : in std_logic_vector(31 downto 0);
+        signal i_dpath_opcode : in std_logic_vector(6 downto 0);
+        signal i_dpath_rs1    : in std_logic_vector(4 downto 0);
+        signal i_dpath_rs2    : in std_logic_vector(4 downto 0);
+        signal i_dpath_rd     : in std_logic_vector(4 downto 0);
+        signal i_dpath_funct3 : in std_logic_vector(2 downto 0);
+        signal i_dpath_funct7 : in std_logic_vector(6 downto 0);
+        signal i_dpath_itype  : in std_logic_vector(11 downto 0);
+        signal i_dpath_stype  : in std_logic_vector(11 downto 0);
+        signal i_dpath_btype  : in std_logic_vector(12 downto 0);
+        signal i_dpath_utype  : in std_logic_vector(19 downto 0);
+        signal i_dpath_jtype  : in std_logic_vector(20 downto 0);
+        signal o_dpath_done   : out std_logic;
+        signal o_dpath_jtaken : out std_logic;
+        signal o_dpath_btaken : out std_logic;
+        signal o_dpath_nxtpc  : out std_logic_vector(31 downto 0)
+    ) is
+    begin
+        o_data_addr    <= x"00000000";
+        o_data_ren     <= '0';
+        o_data_wen     <= "0000";
+        o_data_wdata   <= x"00000000";
+        o_dpath_done   <= '0';
+        o_dpath_jtaken <= '0';
+        o_dpath_btaken <= '0';
+        o_dpath_nxtpc  <= x"00000000";
+        case i_dpath_opcode is
+            when cBranchOpcode =>
+                -- Identify what type of branch this is
+                case i_dpath_funct3 is
+                    when "000" =>
+                        -- beq
+                        if registers(to_natural(i_dpath_rs1)).value = registers(to_natural(i_dpath_rs2)).value then
+                            o_dpath_btaken <= '1';
+                        end if;
+                        o_dpath_nxtpc <= std_logic_vector(unsigned(i_dpath_pc) + 
+                            unsigned(resize(signed(i_dpath_btype), 32)));
+                        o_dpath_done   <= '1';
+                    when "001" =>
+                        -- bne
+                        if registers(to_natural(i_dpath_rs1)).value /= registers(to_natural(i_dpath_rs1)).value then
+                            o_dpath_btaken <= '1';
+                        end if;
+                        o_dpath_nxtpc <= std_logic_vector(unsigned(i_dpath_pc) + 
+                            unsigned(resize(signed(i_dpath_btype), 32)));
+                        o_dpath_done <= '1';
+                    when "100" =>
+                        -- blt
+                        if signed(registers(to_natural(i_dpath_rs1)).value) < signed(registers(to_natural(i_dpath_rs1)).value) then
+                            o_dpath_btaken <= '1';
+                        end if;
+                        o_dpath_nxtpc <= std_logic_vector(unsigned(i_dpath_pc) + 
+                            unsigned(resize(signed(i_dpath_btype), 32)));
+                        o_dpath_done <= '1';
+                    when "101" =>
+                        -- bge
+                        if signed(registers(to_natural(i_dpath_rs1)).value) >= signed(registers(to_natural(i_dpath_rs1)).value) then
+                            o_dpath_btaken <= '1';
+                        end if;
+                        o_dpath_nxtpc <= std_logic_vector(unsigned(i_dpath_pc) + 
+                            unsigned(resize(signed(i_dpath_btype), 32)));
+                        o_dpath_done <= '1';
+                    when "110" =>
+                        -- bltu
+                        if unsigned(registers(to_natural(i_dpath_rs1)).value) < unsigned(registers(to_natural(i_dpath_rs1)).value) then
+                            o_dpath_btaken <= '1';
+                        end if;
+                        o_dpath_nxtpc <= std_logic_vector(unsigned(i_dpath_pc) + 
+                            unsigned(resize(signed(i_dpath_btype), 32)));
+                        o_dpath_done <= '1';
+                    when "111" =>
+                        -- bgeu
+                        if unsigned(registers(to_natural(i_dpath_rs1)).value) >= unsigned(registers(to_natural(i_dpath_rs1)).value) then
+                            o_dpath_btaken <= '1';
+                        end if;
+                        o_dpath_nxtpc <= std_logic_vector(unsigned(i_dpath_pc) + 
+                            unsigned(resize(signed(i_dpath_btype), 32)));
+                        o_dpath_done <= '1';
+                    when others =>
+                        assert false report "Invalid funct3 during branch";
+                end case;
+            when cLoadOpcode =>
+                null;
+            when cStoreOpcode =>
+                null;
+            when cAluOpcode => -- Also handles MULDIV
+                null;
+            when cAluImmedOpcode =>
+                null;
+            when cJumpOpcode =>
+                null;
+            when cJumpRegOpcode =>
+                null;
+            when cLoadUpperOpcode =>
+                null;
+            when cAuipcOpcode =>
+                null;
+            when cFenceOpcode =>
+                null;
+            when cEcallOpcode =>
+                null;
+            when others =>
+                assert false report "Invalid opcode";
+        end case;
+    end procedure;
     
 end package body RiscVTbTools;

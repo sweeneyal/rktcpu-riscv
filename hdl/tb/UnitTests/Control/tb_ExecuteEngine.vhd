@@ -141,6 +141,7 @@ begin
                 wait for 100 ps;
                 resetn <= '1';
                 wait for 100 ps;
+                --report "0. ren="&std_logic'image(ren);
                 check(ren = '1'); -- We should start requesting immediately
 
                 for ii in 0 to 31 loop
@@ -149,14 +150,17 @@ begin
                     ivalid <= '1'; -- Request response
                     done   <= '0';
                     wait for 100 ps;
+                    --report "1. ren="&std_logic'image(ren);
                     check(ren = '0');
     
                     wait until rising_edge(clk);
                     wait for 100 ps;
-                    done <= '1'; -- Instruction done
+                    ivalid <= '0';
+                    done   <= '1'; -- Instruction done
                     wait for 100 ps;
                     -- As soon as the instruction is done, we should be 
                     -- making another request.
+                    -- report "2. ren="&std_logic'image(ren);
                     check(ren = '1');
                 end loop;
 
@@ -177,6 +181,7 @@ begin
                 wait for 100 ps;
                 resetn <= '1';
                 wait for 100 ps;
+                report "0. ren="&std_logic'image(ren);
                 check(ren = '1'); -- We should start requesting immediately
 
                 for ii in 0 to 31 loop
@@ -189,16 +194,19 @@ begin
                     ivalid <= '1'; -- Request response
                     done   <= '0';
                     wait for 100 ps;
+                    report "1. ren="&std_logic'image(ren);
                     check(ren = '0');
     
                     wait until rising_edge(clk);
                     wait for 100 ps;
-                    done <= '1'; -- Instruction done
+                    ivalid <= '0';
+                    done   <= '1'; -- Instruction done
                     wait for 100 ps;
                     -- As soon as the instruction is done, we should be 
                     -- making another request.
+                    report "2. ren="&std_logic'image(ren);
                     check(ren = '1');
-                    pc_v := pc_v + 1;
+                    pc_v := pc_v + 4;
                 end loop;
 
                 wait until rising_edge(clk);
@@ -206,10 +214,12 @@ begin
                 ivalid <= '1'; -- Request response
                 done   <= '0';
                 wait for 100 ps;
+                report "3. ren="&std_logic'image(ren);
                 check(ren = '0');
 
                 wait until rising_edge(clk);
                 wait for 100 ps;
+                ivalid <= '0';
                 nxtpc  <= x"FFFF0000";
                 btaken <= '1';
                 done   <= '1'; -- Instruction done

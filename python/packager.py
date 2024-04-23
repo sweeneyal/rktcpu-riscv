@@ -43,3 +43,4 @@ def package_entities(directory, packageName):
 
 package_entities('hdl/rtl/Control', 'ControlEntities')
 package_entities('hdl/rtl/DataPath', 'DataPathEntities')
+package_entities('hdl/tb/UvmTbPeripherals', 'UvmTbPeripherals')
