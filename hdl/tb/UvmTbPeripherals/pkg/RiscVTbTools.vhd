@@ -472,6 +472,7 @@ package body RiscVTbTools is
         signal o_dpath_btaken : out std_logic;
         signal o_dpath_nxtpc  : out std_logic_vector(31 downto 0)
     ) is
+        variable lui_result : std_logic_vector(31 downto 0);
     begin
         o_data_addr    <= x"00000000";
         o_data_ren     <= '0';
@@ -549,9 +550,13 @@ package body RiscVTbTools is
             when cJumpRegOpcode =>
                 null;
             when cLoadUpperOpcode =>
-                null;
+                registers(to_natural(i_dpath_rd)).value := i_dpath_utype & x"000";
+                o_dpath_done  <= '1';
             when cAuipcOpcode =>
-                null;
+                lui_result := i_dpath_utype & x"000";
+                registers(to_natural(i_dpath_rd)).value := std_logic_vector(unsigned(i_dpath_pc) + 
+                    unsigned(lui_result));
+                o_dpath_done  <= '1';
             when cFenceOpcode =>
                 null;
             when cEcallOpcode =>
