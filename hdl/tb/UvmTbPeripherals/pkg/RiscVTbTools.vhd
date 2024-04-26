@@ -473,6 +473,10 @@ package body RiscVTbTools is
         signal o_dpath_nxtpc  : out std_logic_vector(31 downto 0)
     ) is
         variable lui_result : std_logic_vector(31 downto 0);
+        variable opA        : std_logic_vector(31 downto 0);
+        variable opB        : std_logic_vector(31 downto 0);
+        variable rrem       : std_logic_vector(31 downto 0);
+        variable div        : std_logic_vector(31 downto 0);
     begin
         o_data_addr    <= x"00000000";
         o_data_ren     <= '0';
@@ -482,13 +486,16 @@ package body RiscVTbTools is
         o_dpath_jtaken <= '0';
         o_dpath_btaken <= '0';
         o_dpath_nxtpc  <= x"00000000";
+
+        opA := registers(to_natural(i_dpath_rs1)).value;
+        opB := registers(to_natural(i_dpath_rs2)).value;
         case i_dpath_opcode is
             when cBranchOpcode =>
                 -- Identify what type of branch this is
                 case i_dpath_funct3 is
                     when "000" =>
                         -- beq
-                        if registers(to_natural(i_dpath_rs1)).value = registers(to_natural(i_dpath_rs2)).value then
+                        if opA = opB then
                             o_dpath_btaken <= '1';
                         end if;
                         o_dpath_nxtpc <= std_logic_vector(unsigned(i_dpath_pc) + 
@@ -496,7 +503,7 @@ package body RiscVTbTools is
                         o_dpath_done   <= '1';
                     when "001" =>
                         -- bne
-                        if registers(to_natural(i_dpath_rs1)).value /= registers(to_natural(i_dpath_rs1)).value then
+                        if opA /= opB then
                             o_dpath_btaken <= '1';
                         end if;
                         o_dpath_nxtpc <= std_logic_vector(unsigned(i_dpath_pc) + 
@@ -504,7 +511,7 @@ package body RiscVTbTools is
                         o_dpath_done <= '1';
                     when "100" =>
                         -- blt
-                        if signed(registers(to_natural(i_dpath_rs1)).value) < signed(registers(to_natural(i_dpath_rs1)).value) then
+                        if signed(opA) < signed(opB) then
                             o_dpath_btaken <= '1';
                         end if;
                         o_dpath_nxtpc <= std_logic_vector(unsigned(i_dpath_pc) + 
@@ -512,7 +519,7 @@ package body RiscVTbTools is
                         o_dpath_done <= '1';
                     when "101" =>
                         -- bge
-                        if signed(registers(to_natural(i_dpath_rs1)).value) >= signed(registers(to_natural(i_dpath_rs1)).value) then
+                        if signed(opA) >= signed(opB) then
                             o_dpath_btaken <= '1';
                         end if;
                         o_dpath_nxtpc <= std_logic_vector(unsigned(i_dpath_pc) + 
@@ -520,7 +527,7 @@ package body RiscVTbTools is
                         o_dpath_done <= '1';
                     when "110" =>
                         -- bltu
-                        if unsigned(registers(to_natural(i_dpath_rs1)).value) < unsigned(registers(to_natural(i_dpath_rs1)).value) then
+                        if unsigned(opA) < unsigned(opB) then
                             o_dpath_btaken <= '1';
                         end if;
                         o_dpath_nxtpc <= std_logic_vector(unsigned(i_dpath_pc) + 
@@ -528,7 +535,7 @@ package body RiscVTbTools is
                         o_dpath_done <= '1';
                     when "111" =>
                         -- bgeu
-                        if unsigned(registers(to_natural(i_dpath_rs1)).value) >= unsigned(registers(to_natural(i_dpath_rs1)).value) then
+                        if unsigned(opA) >= unsigned(opB) then
                             o_dpath_btaken <= '1';
                         end if;
                         o_dpath_nxtpc <= std_logic_vector(unsigned(i_dpath_pc) + 
@@ -541,10 +548,118 @@ package body RiscVTbTools is
                 null;
             when cStoreOpcode =>
                 null;
-            when cAluOpcode => -- Also handles MULDIV
-                null;
+            when cAluOpcode =>
+                if (i_dpath_funct7 = "0000001") then -- MULDIV
+                    case i_dpath_funct3 is
+                        when "000" =>
+                            -- MUL
+                            registers(to_natural(i_dpath_rd)).value := shape(
+                                std_logic_vector(signed(opA) * 
+                                signed(opB)),
+                                31, 0);
+                        when "001" =>
+                            -- MULH
+                            registers(to_natural(i_dpath_rd)).value := shape(
+                                std_logic_vector(signed(opA) * 
+                                signed(opB)),
+                                63, 32);
+                        when "010" =>
+                            -- MULHSU
+                            registers(to_natural(i_dpath_rd)).value := shape(
+                                std_logic_vector(resize(signed(opA), 64) * 
+                                signed(resize(unsigned(opB), 64))),
+                                63, 32);
+                        when "011" =>
+                            -- MULHU
+                            registers(to_natural(i_dpath_rd)).value := shape(
+                                std_logic_vector(unsigned(opA) * 
+                                unsigned(opB)),
+                                63, 32);
+                        when "100" =>
+                            -- DIV
+                            div := std_logic_vector(divide(signed(opA), signed(opB)));
+                            registers(to_natural(i_dpath_rd)).value := div;
+                        when "101" =>
+                            -- REM
+                            div := std_logic_vector(divide(signed(opA), signed(opB)));
+                            if opA(31) /= opB(31) then
+                                if opA(31) = '1' then
+                                    rrem := std_logic_vector(unsigned(opA) - shape(unsigned(-signed(div)) * unsigned(opB), 31, 0));
+                                    rrem := std_logic_vector(unsigned(-signed(rrem)));
+                                else
+                                    rrem := std_logic_vector(unsigned(opA) - shape(unsigned(-signed(div)) * unsigned(opB), 31, 0));
+                                end if;
+                            else
+                                rrem := std_logic_vector(unsigned(opA) - shape(unsigned(div) * unsigned(opB), 31, 0));
+                            end if;
+                            registers(to_natural(i_dpath_rd)).value := rrem;
+                        when "110" =>
+                            -- DIVU
+                            div := std_logic_vector(divide(unsigned(opA), unsigned(opB)));
+                            registers(to_natural(i_dpath_rd)).value := div;
+                        when "111" =>
+                            -- REMU
+                            div  := std_logic_vector(divide(unsigned(opA), unsigned(opB)));
+                            rrem := std_logic_vector(unsigned(opA) - shape(unsigned(div) * unsigned(opB), 31, 0));
+                            registers(to_natural(i_dpath_rd)).value := rrem;
+                        when others =>
+                            assert false report "Invalid MULDIV funct3";
+                    end case;
+                else
+                    case i_dpath_funct3 is
+                        when "000" =>
+                            if (i_dpath_funct7 = "0100000") then -- SUB
+                                registers(to_natural(i_dpath_rd)).value := std_logic_vector(s32_t(opA) - to_s32(opB));
+                            else -- ADD
+                                registers(to_natural(i_dpath_rd)).value := std_logic_vector(s32_t(opA) + to_s32(opB));
+                            end if;
+                        when "001" => -- SLLI
+                            registers(to_natural(i_dpath_rd)).value := std_logic_vector(u32_t(opA) sll to_natural(opB));
+                        when "010" =>
+                            registers(to_natural(i_dpath_rd)).value := (31 downto 1 => '0') & Bool2Bit(s32_t(opA) < s32_t(opB));
+                        when "011" =>
+                            registers(to_natural(i_dpath_rd)).value := (31 downto 1 => '0') & Bool2Bit(u32_t(opA) < u32_t(opB));
+                        when "100" =>
+                            registers(to_natural(i_dpath_rd)).value := opA xor opB;
+                        when "101" =>
+                            if (i_dpath_funct7 = "0100000") then -- SRA
+                                registers(to_natural(i_dpath_rd)).value := std_logic_vector(s32_t(opA) sra to_natural(opB));
+                            else -- SRL
+                                registers(to_natural(i_dpath_rd)).value := std_logic_vector(u32_t(opA) srl to_natural(opB));
+                            end if;
+                        when "110" =>
+                            registers(to_natural(i_dpath_rd)).value := opA or opB;
+                        when "111" =>
+                            registers(to_natural(i_dpath_rd)).value := opA and opB;
+                        when others =>
+                            assert false report "Invalid funct for ALUOP";
+                    end case;
+                end if;
             when cAluImmedOpcode =>
-                null;
+                case i_dpath_funct3 is
+                    when "000" =>
+                        registers(to_natural(i_dpath_rd)).value := std_logic_vector(s32_t(opA) + to_s32(i_dpath_itype));
+                    when "001" => -- SLLI
+                        registers(to_natural(i_dpath_rd)).value := std_logic_vector(u32_t(opA) sll to_natural(i_dpath_rs2));
+                    when "010" =>
+                        registers(to_natural(i_dpath_rd)).value := (31 downto 1 => '0') & Bool2Bit(s32_t(opA) < to_s32(i_dpath_itype));
+                    when "011" =>
+                        registers(to_natural(i_dpath_rd)).value := (31 downto 1 => '0') & Bool2Bit(u32_t(opA) < to_u32(i_dpath_itype));
+                    when "100" =>
+                        registers(to_natural(i_dpath_rd)).value := opA xor std_logic_vector(to_s32(i_dpath_itype));
+                    when "101" =>
+                        if (i_dpath_funct7 = "0100000") then -- SRAI
+                            registers(to_natural(i_dpath_rd)).value := std_logic_vector(s32_t(opA) sra to_natural(i_dpath_rs2));
+                        else -- SRLI
+                            registers(to_natural(i_dpath_rd)).value := std_logic_vector(u32_t(opA) srl to_natural(i_dpath_rs2));
+                        end if;
+                    when "110" =>
+                        registers(to_natural(i_dpath_rd)).value := opA or std_logic_vector(to_s32(i_dpath_itype));
+                    when "111" =>
+                        registers(to_natural(i_dpath_rd)).value := opA and std_logic_vector(to_s32(i_dpath_itype));
+                    when others =>
+                        assert false report "Invalid funct for ALUIMMED";
+                end case;
             when cJumpOpcode =>
                 null;
             when cJumpRegOpcode =>
@@ -558,9 +673,9 @@ package body RiscVTbTools is
                     unsigned(lui_result));
                 o_dpath_done  <= '1';
             when cFenceOpcode =>
-                null;
+                assert false report "Ecalls unsupported.";
             when cEcallOpcode =>
-                null;
+                assert false report "Ecalls unsupported.";
             when others =>
                 assert false report "Invalid opcode";
         end case;
