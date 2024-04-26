@@ -661,9 +661,10 @@ package body RiscVTbTools is
                         assert false report "Invalid funct for ALUIMMED";
                 end case;
             when cJumpOpcode =>
-                null;
+                o_dpath_nxtpc <= std_logic_vector(s32_t(i_dpath_pc) + to_s32(i_dpath_jtype));
+                registers(to_natural(i_dpath_rd)).value := std_logic_vector(s32_t(i_dpath_pc) + 4);
             when cJumpRegOpcode =>
-                null;
+                o_dpath_nxtpc <= std_logic_vector(s32_t(opA) + to_s32(i_dpath_itype));
             when cLoadUpperOpcode =>
                 registers(to_natural(i_dpath_rd)).value := i_dpath_utype & x"000";
                 o_dpath_done  <= '1';
