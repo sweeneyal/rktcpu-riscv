@@ -545,9 +545,9 @@ package body RiscVTbTools is
                         assert false report "Invalid funct3 during branch";
                 end case;
             when cLoadOpcode =>
-                null;
+                assert false report "Memory is not supported in this process. Use simulate_memory instead.";
             when cStoreOpcode =>
-                null;
+                assert false report "Memory is not supported in this process. Use simulate_memory instead.";
             when cAluOpcode =>
                 if (i_dpath_funct7 = "0000001") then -- MULDIV
                     case i_dpath_funct3 is

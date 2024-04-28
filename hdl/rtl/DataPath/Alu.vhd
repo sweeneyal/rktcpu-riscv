@@ -69,15 +69,15 @@ begin
             when "101" =>
                 if (i_opcode = cAluImmedOpcode) then
                     if (i_funct7 = "0100000") then -- SRAI
-                        o_res <= std_logic_vector(s32_t(i_opA) sra to_natural(i_shamt));
+                        o_res <= std_logic_vector(shift_right(signed(i_opA), to_natural(i_shamt)));
                     else -- SRLI
-                        o_res <= std_logic_vector(u32_t(i_opA) srl to_natural(i_shamt));
+                        o_res <= std_logic_vector(signed(i_opA) srl to_natural(i_shamt));
                     end if;
                 else
                     if (i_funct7 = "0100000") then -- SRA
-                        o_res <= std_logic_vector(s32_t(i_opA) sra to_natural(i_opB));
+                        o_res <= std_logic_vector(shift_right(signed(i_opA), to_natural(i_opB)));
                     else -- SRL
-                        o_res <= std_logic_vector(u32_t(i_opA) srl to_natural(i_opB));
+                        o_res <= std_logic_vector(unsigned(i_opA) srl to_natural(i_opB));
                     end if;
                 end if;
             when "110" =>
@@ -97,7 +97,7 @@ begin
         end case;
     end process AluOperations;
 
-    SetAluEnable: process(i_opcode)
+    SetAluEnable: process(i_opcode, i_funct7)
     begin
         o_valid <= Bool2Bit((i_opcode = cAluImmedOpcode) or (i_opcode = cAluOpcode and (i_funct7 = "0100000" or i_funct7 = "0000000")));
     end process SetAluEnable;

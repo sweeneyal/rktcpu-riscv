@@ -80,6 +80,12 @@ architecture rtl of DataPath is
     signal result     : std_logic_vector(31 downto 0);
     signal valid      : std_logic;
     signal done       : std_logic;
+
+    attribute DONT_TOUCH : string;
+    attribute DONT_TOUCH of eAlu : label is "true";
+    attribute DONT_TOUCH of eBranchUnit : label is "true";
+    attribute DONT_TOUCH of eMemAccessUnit : label is "true";
+    attribute DONT_TOUCH of ResultMux : label is "true";
 begin
     
     eAlu : Alu

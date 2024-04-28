@@ -112,9 +112,10 @@ begin
             
             end case;
         else
-            o_done   <= '0';
-            o_jtaken <= '0';
-            o_btaken <= '0';
+            o_done    <= '0';
+            o_jtaken  <= '0';
+            o_btaken  <= '0';
+            o_bexcept <= '0';
         end if;
     end process SetBranchEnable;
     

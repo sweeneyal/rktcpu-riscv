@@ -176,3 +176,6 @@ hdl/bd/**/*.bda
 hdl/bd/**/*.bxml
 
 scratch
+
+*.str
+*.jou

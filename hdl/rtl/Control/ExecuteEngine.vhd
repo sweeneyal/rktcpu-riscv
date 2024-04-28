@@ -16,8 +16,8 @@ entity ExecuteEngine is
         i_resetn : in std_logic;
 
         o_ren    : out std_logic;
-        i_instr  : out std_logic_vector(31 downto 0);
-        i_ivalid : out std_logic;
+        i_instr  : in std_logic_vector(31 downto 0);
+        i_ivalid : in std_logic;
         
         o_pcwen  : out std_logic;
         o_pc     : out std_logic_vector(31 downto 0);
