@@ -8,6 +8,19 @@ library universal;
 
 package UvmTbPeripherals is
 
+component RandomRam is
+    port (
+        i_clk         : in std_logic;
+        i_resetn      : in std_logic;
+        i_data_addr   : in std_logic_vector(31 downto 0);
+        i_data_ren    : in std_logic;
+        i_data_wen    : in std_logic_vector(3 downto 0);
+        i_data_wdata  : in std_logic_vector(31 downto 0);
+        o_data_rdata  : out std_logic_vector(31 downto 0);
+        o_data_rvalid : out std_logic
+    );
+end component RandomRam;
+
 component SimulatedDataPath is
     port (
         -- System level signals
