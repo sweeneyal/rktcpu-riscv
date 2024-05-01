@@ -12,3 +12,12 @@ The planned milestones are as follows:
 - Hello world program created, as well as binary provided.
 - Integration on Arty A7 100T
 - Co-Processor demonstration in relevant application (possibly as a game console?)
+
+## Progress so far
+I've created several first iterations of elements of the data path and control units, and have created tests for each. Not all of them pass, primarily because the ones that don't pass are stand-ins for making further tests. It's like the adage goes, "if you have 100% passing tests, you need to add more tests."
+
+Currently, I'm working on integration tests for some of these components so that I can verify that they work well together, with no unnecessary stalls or errant flags, etc. Once I have these tests completed and all components verified to some extent, the plan is to build DUT harnesses around the Datapath and Control and test on hardware, verifying that the parts meet timing.
+
+Speaking of timing, I'm particularly scared that the ALU and Branch Unit will not meet timing, since the critical path for those is Registers -> ALU/Branch Unit -> Registers in under 5 to 10 ns. That seems pretty unfeasible, so I may insert registers at the entry point of the ALU, which means ALU operations will take an additional clock cycle but meet timing.
+
+A goal of this would be to make it fully pipelined, but I'd rather have a functioning implementation that's slow than a broken implementation that's fast.
