@@ -17,6 +17,9 @@ library tb;
     use tb.RiscVTbTools.all;
 
 entity RandomRam is
+    generic (
+        cCheckUninitialized : boolean := false
+    );
     port (
         i_clk         : in std_logic;
         i_resetn      : in std_logic;
@@ -33,16 +36,207 @@ architecture rtl of RandomRam is
     type memory_address_t;
     type memory_address_ptr_t is access memory_address_t;
     type memory_address_t is record
-        address : std_logic_vector(31 downto 0);
+        address : std_logic_vector(31 downto 2);
         data    : std_logic_vector(31 downto 0);
         ptr     : memory_address_ptr_t;
     end record memory_address_t;
+
+    function check_alignment(addr_bits : std_logic_vector(1 downto 0); wen : std_logic_vector(3 downto 0)) return boolean is
+    begin
+        case addr_bits is
+            -- No matter what, if addr_bits is word aligned, we're good.
+            when "00" =>
+                return true;
+
+            when "01" | "10" =>
+                -- We can only have normal alignment for byte and halfword writes/reads.
+                case wen is
+                    when "0001" | "0011" =>
+                        return true;
+                    when others =>
+                        -- Inherently considering 3/4 word writes unsanitary.
+                        return false;
+                end case;
+        
+            when "11" =>
+                -- We can only have normal alignment for byte writes/reads.
+                case wen is
+                    when "0001" =>
+                        return true;
+                    when others =>
+                        -- Inherently considering 3/4 word writes unsanitary.
+                        return false;
+                end case;
+
+            when others =>
+                -- Anything else, jail.
+                return false;
+        end case;
+    end function;
+
+    procedure handle_aligned(
+        variable memptr : inout memory_address_ptr_t;
+        signal i_addr   : in std_logic_vector(31 downto 2);
+        signal i_wen    : in std_logic_vector(3 downto 0);
+        signal i_wdata  : in std_logic_vector(31 downto 0);
+        signal o_rdata  : out std_logic_vector(31 downto 0);
+        signal o_rvalid : out std_logic
+    ) is
+        -- Temporary rdata
+        variable trdata     : std_logic_vector(31 downto 0);
+        variable readonly   : boolean;
+        variable old_memptr : memory_address_ptr_t;
+    begin
+        if (memptr = null) then
+            -- We're creating the first memory address.
+            readonly := true;
+            -- Iterate over a variable and write the data to it, to be used in the memory creation later.
+            for ii in 0 to 3 loop
+                if (i_wen(ii) = '1') then
+                    trdata(8 * (ii + 1) - 1 downto 8 * ii) := i_wdata(8 * (ii + 1) - 1 downto 8 * ii);
+                    readonly := false;
+                else
+                    trdata(8 * (ii + 1) - 1 downto 8 * ii) := x"00";
+                end if;
+            end loop;
+
+            -- If we're making sure we dont read uninitialized memory addresses, then assert.
+            assert readonly and cCheckUninitialized report "Uninitialized read detected.";
+
+            -- Create the memory address we're interested in.
+            memptr := 
+                new memory_address_t'(
+                    address=>i_data_addr(31 downto 2), 
+                    data=>trdata, 
+                    ptr=>null);
+        else
+            -- We're iterating the linked list until we find either the address we're looking for
+            -- or the end of the list.
+            old_memptr := memptr;
+            while (memptr.address /= i_data_addr 
+                    and memptr.ptr /= null) loop
+                memptr := memptr.ptr;
+            end loop;
+                
+            if (memptr.address = i_data_addr) then
+                -- We found the address, now read it
+                readonly := true;
+                -- Iterate over the data lanes, writing the result only when wen(ii) = '1';
+                for ii in 0 to 3 loop
+                    if (i_wen(ii) = '1') then
+                        memptr.data(8 * (ii + 1) - 1 downto 8 * ii) := i_wdata(8 * (ii + 1) - 1 downto 8 * ii);
+                        readonly := false;
+                    end if;
+                end loop;
+                -- Make sure we also write the rdata out as well, no matter what.
+                o_rdata  <= memptr.data;
+                -- Only declare the data as valid if only a read occurred.
+                o_rvalid <= bool2bit(readonly);
+
+            elsif (memptr.ptr = null) then
+                readonly := true;
+                -- Iterate over a variable and write the data to it, to be used in the memory creation later.
+                for ii in 0 to 3 loop
+                    if (i_wen(ii) = '1') then
+                        trdata(8 * (ii + 1) - 1 downto 8 * ii) := i_wdata(8 * (ii + 1) - 1 downto 8 * ii);
+                        readonly := false;
+                    else
+                        trdata(8 * (ii + 1) - 1 downto 8 * ii) := x"00";
+                    end if;
+                end loop;
+
+                -- If we're making sure we dont read uninitialized memory addresses, then assert.
+                assert readonly and cCheckUninitialized report "Uninitialized read detected.";
+
+                -- Create the memory address we're interested in.
+                memptr.ptr := 
+                    new memory_address_t'(
+                        address=>i_data_addr(31 downto 0), 
+                        data=>trdata, 
+                        ptr=>null);
+            end if;
+            memptr := old_memptr;
+        end if;
+    end procedure;
+
+    procedure handle_unaligned(
+        variable memptr : inout memory_address_ptr_t;
+        signal i_addr   : in std_logic_vector(31 downto 0);
+        signal i_wen    : in std_logic_vector(3 downto 0);
+        signal i_wdata  : in std_logic_vector(31 downto 0);
+        signal o_rdata  : out std_logic_vector(31 downto 0);
+        signal o_rvalid : out std_logic
+    ) is
+        -- Temporary rdata
+        variable trdata     : std_logic_vector(31 downto 0);
+        variable readonly   : boolean;
+        variable old_memptr : memory_address_ptr_t;
+    begin
+        if (memptr = null) then
+            -- We're creating the first memory address.
+            -- For unaligned operations, we're always accessing two addresses, which are i_addr and i_addr + 1
+            -- Therefore, create one for the first address, then create one for the second address.
+            readonly := true;
+
+            -- If we're making sure we dont read uninitialized memory addresses, then assert.
+            assert readonly and cCheckUninitialized report "Uninitialized read detected.";
+        else
+            -- For unaligned operations, we're always accessing two addresses, which are i_addr and i_addr + 1
+            -- Therefore, iterate this first for the first address and then iterate again for the second address.
+
+            -- We're iterating the linked list until we find either the address we're looking for
+            -- or the end of the list.
+            old_memptr := memptr;
+            while (memptr.address /= i_data_addr 
+                    and memptr.ptr /= null) loop
+                memptr := memptr.ptr;
+            end loop;
+                
+            if (memptr.address = i_data_addr) then
+                -- We found the address, now read it
+                readonly := true;
+                -- Iterate over the data lanes, writing the result only when wen(ii) = '1';
+                for ii in 0 to 3 loop
+                    if (i_wen(ii) = '1') then
+                        memptr.data(8 * (ii + 1) - 1 downto 8 * ii) := i_wdata(8 * (ii + 1) - 1 downto 8 * ii);
+                        readonly := false;
+                    end if;
+                end loop;
+                -- Make sure we also write the rdata out as well, no matter what.
+                o_rdata  <= memptr.data;
+                -- Only declare the data as valid if only a read occurred.
+                o_rvalid <= bool2bit(readonly);
+
+            elsif (memptr.ptr = null) then
+                readonly := true;
+                -- Iterate over a variable and write the data to it, to be used in the memory creation later.
+                for ii in 0 to 3 loop
+                    if (i_wen(ii) = '1') then
+                        trdata(8 * (ii + 1) - 1 downto 8 * ii) := i_wdata(8 * (ii + 1) - 1 downto 8 * ii);
+                        readonly := false;
+                    else
+                        trdata(8 * (ii + 1) - 1 downto 8 * ii) := x"00";
+                    end if;
+                end loop;
+
+                -- If we're making sure we dont read uninitialized memory addresses, then assert.
+                assert readonly and cCheckUninitialized report "Uninitialized read detected.";
+
+                -- Create the memory address we're interested in.
+                memptr.ptr := 
+                    new memory_address_t'(
+                        address=>i_data_addr(31 downto 2), 
+                        data=>trdata, 
+                        ptr=>null);
+            end if;
+            memptr := old_memptr;
+        end if;
+    end procedure;
 begin
     
     InternalTestStructure: process(i_clk)
         variable memory_ptr     : memory_address_ptr_t;
-        variable old_memory_ptr : memory_address_ptr_t;
-        variable RandData       : RandomPType;
+        variable wdata          : std_logic_vector(31 downto 0);
     begin
         if rising_edge(i_clk) then
             if (i_resetn = '0') then
@@ -50,64 +244,18 @@ begin
                 -- would be the most repeatable, though we'd need to restart with the seed.
             else
                 if (i_data_ren = '1') then
-                    if (i_data_wen = "0001") then -- Fix this, this is a terrible implementation
-                        if (memory_ptr = null) then
-                            memory_ptr := 
-                                new memory_address_t'(
-                                    address=>i_data_addr, 
-                                    data=>i_data_wdata, 
-                                    ptr=>null);
-                        else
-                            old_memory_ptr := memory_ptr;
-                            while (memory_ptr.address /= i_data_addr and memory_ptr.ptr /= null) loop
-                                memory_ptr := memory_ptr.ptr;
-                            end loop;
-    
-                            if (memory_ptr.address = i_data_addr) then
-                                memory_ptr.data := i_data_wdata;
-                            elsif (memory_ptr.ptr /= null) then
-                                memory_ptr.ptr := 
-                                    new memory_address_t'(
-                                        address=>i_data_addr, 
-                                        data=>i_data_wdata, 
-                                        ptr=>null);
-                            end if;
-                            memory_ptr := old_memory_ptr;
-                        end if;
-                        o_data_rdata  <= (others => '0');
-                        o_data_rvalid <= '0';
+                    if (check_alignment(i_data_addr(1 downto 0), i_data_wen)) then
+                        handle_aligned(
+                            memptr   => memory_ptr,
+                            i_addr   => i_data_addr(31 downto 2),
+                            i_wen    => i_data_wen,
+                            i_wdata  => i_data_wdata,
+                            o_rdata  => o_data_rdata,
+                            o_rvalid => o_data_rvalid
+                        );
                     else
-                        if (memory_ptr = null) then
-                            memory_ptr := 
-                                new memory_address_t'(
-                                    address=>i_data_addr, 
-                                    data=>RandData.RandSlv(x"00000000", x"FFFFFFFF"), 
-                                    ptr=>null);
-                            o_data_rdata <= memory_ptr.data;
-                            o_data_rvalid <= '1';
-                        else
-                            old_memory_ptr := memory_ptr;
-                            while (memory_ptr.address /= i_data_addr and memory_ptr.ptr /= null) loop
-                                memory_ptr := memory_ptr.ptr;
-                            end loop;
 
-                            if (memory_ptr.address = i_data_addr) then
-                                o_data_rdata <= memory_ptr.data;
-                            elsif (memory_ptr.ptr /= null) then
-                                memory_ptr.ptr := 
-                                    new memory_address_t'(
-                                        address=>i_data_addr, 
-                                        data=>RandData.RandSlv(x"00000000", x"FFFFFFFF"), 
-                                        ptr=>null);
-                                o_data_rdata <= memory_ptr.ptr.data;
-                            end if;
-                            o_data_rvalid <= '1';
-                            memory_ptr := old_memory_ptr;
-                        end if;
                     end if;
-                else
-                    o_data_rdata <= x"00000000";
-                    o_data_rvalid <= '0';
                 end if;
             end if;
         end if;
