@@ -106,19 +106,19 @@ architecture rtl of RandomRam is
             -- Create the memory address we're interested in.
             memptr := 
                 new memory_address_t'(
-                    address=>i_data_addr(31 downto 2), 
+                    address=>i_addr(31 downto 2), 
                     data=>trdata, 
                     ptr=>null);
         else
             -- We're iterating the linked list until we find either the address we're looking for
             -- or the end of the list.
             old_memptr := memptr;
-            while (memptr.address /= i_data_addr 
+            while (memptr.address /= i_addr 
                     and memptr.ptr /= null) loop
                 memptr := memptr.ptr;
             end loop;
                 
-            if (memptr.address = i_data_addr) then
+            if (memptr.address = i_addr) then
                 -- We found the address, now read it
                 readonly := true;
                 -- Iterate over the data lanes, writing the result only when wen(ii) = '1';
@@ -151,7 +151,7 @@ architecture rtl of RandomRam is
                 -- Create the memory address we're interested in.
                 memptr.ptr := 
                     new memory_address_t'(
-                        address=>i_data_addr(31 downto 0), 
+                        address=>i_addr, 
                         data=>trdata, 
                         ptr=>null);
             end if;
@@ -169,67 +169,154 @@ architecture rtl of RandomRam is
     ) is
         -- Temporary rdata
         variable trdata     : std_logic_vector(31 downto 0);
+        variable wdata      : std_logic_vector(63 downto 0);
         variable readonly   : boolean;
         variable old_memptr : memory_address_ptr_t;
+        variable addrs      : std_logic_matrix_t(0 to 1)(31 downto 2);
+        variable wens       : std_logic_matrix_t(0 to 1)(3 downto 0);
+        variable wdatas     : std_logic_matrix_t(0 to 1)(31 downto 0);
+        variable addr0      : std_logic_vector(31 downto 2);
+        variable addr1      : std_logic_vector(31 downto 2);
+        variable wen_ext    : std_logic_vector(7 downto 0);
+        variable wen0       : std_logic_vector(3 downto 0);
+        variable wen1       : std_logic_vector(3 downto 0);
+        variable offset     : natural;
     begin
+        addrs(0) := i_addr(31 downto 2);
+        addrs(1) := std_logic_vector(unsigned(i_addr(31 downto 2)) + to_unsigned(1, 30));
+
+        offset := to_natural(i_addr(1 downto 0));
+
+        wen_ext := std_logic_vector(shift_left(resize(unsigned(i_wen), 8), offset));
+        wens(0) := wen_ext(3 downto 0);
+        wens(1) := wen_ext(7 downto 4);
+
+        wdata     := std_logic_vector(shift_left(resize(unsigned(i_wdata), 64), 8 * offset));
+        wdatas(0) := wdata(31 downto 0);
+        wdatas(1) := wdata(63 downto 32);
+
         if (memptr = null) then
             -- We're creating the first memory address.
             -- For unaligned operations, we're always accessing two addresses, which are i_addr and i_addr + 1
             -- Therefore, create one for the first address, then create one for the second address.
             readonly := true;
+            
+            for ii in 0 to 1 loop
+                -- Iterate over a variable and write the data to it, to be used in the memory creation later.
+                trdata := x"00000000";
+                if ii = 0 then
+                    for jj in offset to 3 loop
+                        if (wens(ii)(jj) = '1') then
+                            trdata(8 * (ii + 1) - 1 downto 8 * ii) := wdatas(ii)(8 * (jj + 1) - 1 downto 8 * jj);
+                            readonly := false;
+                        else
+                            trdata(8 * (ii + 1) - 1 downto 8 * ii) := x"00";
+                        end if;
+                    end loop;
+
+                    memptr := new memory_address_t'(
+                        address=>addrs(ii), 
+                        data=>trdata, 
+                        ptr=>null);
+                else
+                    for jj in 0 to offset loop
+                        if (wens(ii)(jj) = '1') then
+                            trdata(8 * (ii + 1) - 1 downto 8 * ii) := wdatas(ii)(8 * (jj + 1) - 1 downto 8 * jj);
+                            readonly := false;
+                        else
+                            trdata(8 * (ii + 1) - 1 downto 8 * ii) := x"00";
+                        end if;
+                    end loop;
+
+                    memptr.ptr := new memory_address_t'(
+                        address=>addrs(ii), 
+                        data=>trdata, 
+                        ptr=>null);
+                end if;
+            end loop;            
 
             -- If we're making sure we dont read uninitialized memory addresses, then assert.
             assert readonly and cCheckUninitialized report "Uninitialized read detected.";
+            o_rdata <= x"00000000";
+            o_rvalid <= bool2bit(readonly);
         else
             -- For unaligned operations, we're always accessing two addresses, which are i_addr and i_addr + 1
             -- Therefore, iterate this first for the first address and then iterate again for the second address.
 
-            -- We're iterating the linked list until we find either the address we're looking for
-            -- or the end of the list.
-            old_memptr := memptr;
-            while (memptr.address /= i_data_addr 
-                    and memptr.ptr /= null) loop
-                memptr := memptr.ptr;
-            end loop;
-                
-            if (memptr.address = i_data_addr) then
-                -- We found the address, now read it
-                readonly := true;
-                -- Iterate over the data lanes, writing the result only when wen(ii) = '1';
-                for ii in 0 to 3 loop
-                    if (i_wen(ii) = '1') then
-                        memptr.data(8 * (ii + 1) - 1 downto 8 * ii) := i_wdata(8 * (ii + 1) - 1 downto 8 * ii);
-                        readonly := false;
-                    end if;
+            for ii in 0 to 1 loop
+                -- We're iterating the linked list until we find either the address we're looking for
+                -- or the end of the list.
+                old_memptr := memptr;
+                while (memptr.address /= addrs(ii) 
+                        and memptr.ptr /= null) loop
+                    memptr := memptr.ptr;
                 end loop;
-                -- Make sure we also write the rdata out as well, no matter what.
-                o_rdata  <= memptr.data;
-                -- Only declare the data as valid if only a read occurred.
-                o_rvalid <= bool2bit(readonly);
-
-            elsif (memptr.ptr = null) then
-                readonly := true;
-                -- Iterate over a variable and write the data to it, to be used in the memory creation later.
-                for ii in 0 to 3 loop
-                    if (i_wen(ii) = '1') then
-                        trdata(8 * (ii + 1) - 1 downto 8 * ii) := i_wdata(8 * (ii + 1) - 1 downto 8 * ii);
-                        readonly := false;
+                    
+                if (memptr.address = addrs(ii)) then
+                    -- We found the address, now read it
+                    readonly := true;
+    
+                    -- Iterate over a variable and write the data to it, to be used in the memory creation later.
+                    trdata := memptr.data;
+                    if (ii = 0) then
+                        for jj in offset to 3 loop
+                            if (wens(ii)(jj) = '1') then
+                                trdata(8 * (ii + 1) - 1 downto 8 * ii) := wdatas(ii)(8 * (jj + 1) - 1 downto 8 * jj);
+                                readonly := false;
+                            end if;
+                        end loop; 
                     else
-                        trdata(8 * (ii + 1) - 1 downto 8 * ii) := x"00";
+                        for jj in 0 to offset loop
+                            if (wens(ii)(jj) = '1') then
+                                trdata(8 * (ii + 1) - 1 downto 8 * ii) := wdatas(ii)(8 * (jj + 1) - 1 downto 8 * jj);
+                                readonly := false;
+                            end if;
+                        end loop;
                     end if;
-                end loop;
+                    memptr.data := trdata;
+                    -- Make sure we also write the rdata out as well, no matter what.
+                    o_rdata  <= memptr.data;
+                    -- Only declare the data as valid if only a read occurred.
+                    o_rvalid <= bool2bit(readonly);
+    
+                elsif (memptr.ptr = null) then
+                    readonly := true;
+                    
+                    -- Create the memory address we're interested in.
+                    memptr.ptr := 
+                        new memory_address_t'(
+                            address=>addrs(ii), 
+                            data=>x"00000000", 
+                            ptr=>null);
 
-                -- If we're making sure we dont read uninitialized memory addresses, then assert.
-                assert readonly and cCheckUninitialized report "Uninitialized read detected.";
-
-                -- Create the memory address we're interested in.
-                memptr.ptr := 
-                    new memory_address_t'(
-                        address=>i_data_addr(31 downto 2), 
-                        data=>trdata, 
-                        ptr=>null);
-            end if;
-            memptr := old_memptr;
+                    -- Iterate over a variable and write the data to it, to be used in the memory creation later.
+                    trdata := memptr.data;
+                    if (ii = 0) then
+                        for jj in offset to 3 loop
+                            if (wens(ii)(jj) = '1') then
+                                trdata(8 * (ii + 1) - 1 downto 8 * ii) := wdatas(ii)(8 * (jj + 1) - 1 downto 8 * jj);
+                                readonly := false;
+                            end if;
+                        end loop; 
+                    else
+                        for jj in 0 to offset loop
+                            if (wens(ii)(jj) = '1') then
+                                trdata(8 * (ii + 1) - 1 downto 8 * ii) := wdatas(ii)(8 * (jj + 1) - 1 downto 8 * jj);
+                                readonly := false;
+                            end if;
+                        end loop;
+                    end if;
+                    memptr.data := trdata;
+                    -- Make sure we also write the rdata out as well, no matter what.
+                    o_rdata  <= memptr.data;
+                    -- Only declare the data as valid if only a read occurred.
+                    o_rvalid <= bool2bit(readonly);
+    
+                    -- If we're making sure we dont read uninitialized memory addresses, then assert.
+                    assert readonly and cCheckUninitialized report "Uninitialized read detected.";
+                end if;
+                memptr := old_memptr;
+            end loop;
         end if;
     end procedure;
 begin
@@ -254,7 +341,14 @@ begin
                             o_rvalid => o_data_rvalid
                         );
                     else
-
+                        handle_unaligned(
+                            memptr   => memory_ptr,
+                            i_addr   => i_data_addr,
+                            i_wen    => i_data_wen,
+                            i_wdata  => i_data_wdata,
+                            o_rdata  => o_data_rdata,
+                            o_rvalid => o_data_rvalid
+                        );
                     end if;
                 end if;
             end if;
