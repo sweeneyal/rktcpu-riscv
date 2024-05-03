@@ -9,6 +9,9 @@ library universal;
 package UvmTbPeripherals is
 
 component RandomRam is
+    generic (
+        cCheckUninitialized : boolean := false
+    );
     port (
         i_clk         : in std_logic;
         i_resetn      : in std_logic;

@@ -40,7 +40,11 @@ entity DataPath is
         o_dpath_done   : out std_logic;
         o_dpath_jtaken : out std_logic;
         o_dpath_btaken : out std_logic;
-        o_dpath_nxtpc  : out std_logic_vector(31 downto 0)
+        o_dpath_nxtpc  : out std_logic_vector(31 downto 0);
+
+        -- Debug verification signals
+        o_dbg_result : out std_logic_vector(31 downto 0);
+        o_dbg_valid  : out std_logic
     );
 end entity DataPath;
 

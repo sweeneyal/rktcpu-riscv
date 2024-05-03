@@ -84,7 +84,10 @@ begin
         o_dpath_done   => o_dpath_done,
         o_dpath_jtaken => o_dpath_jtaken,
         o_dpath_btaken => o_dpath_btaken,
-        o_dpath_nxtpc  => o_dpath_nxtpc
+        o_dpath_nxtpc  => o_dpath_nxtpc,
+
+        o_dbg_result => open,
+        o_dbg_valid => open
     );
 
     Stimuli: process

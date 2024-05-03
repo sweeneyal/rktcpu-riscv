@@ -63,46 +63,14 @@ architecture tb of tb_WhiteBox is
     signal dpath_btaken: std_logic := '0';
     signal dpath_nxtpc : std_logic_vector(31 downto 0) := (others => '0');
 
-    signal opA        : std_logic_vector(31 downto 0);
-    signal opB        : std_logic_vector(31 downto 0);
-    signal alu_result : std_logic_vector(31 downto 0);
-    signal alu_valid  : std_logic;
-    signal alu_done   : std_logic;
-
-    signal bu_result  : std_logic_vector(31 downto 0);
-    signal bu_valid   : std_logic;
-    signal bu_done    : std_logic;
-    signal bu_except  : std_logic;
-    signal jtaken     : std_logic;
-
-    signal mem_result : std_logic_vector(31 downto 0);
-    signal mem_mwen   : std_logic_vector(3 downto 0);
-    signal mem_ldone  : std_logic;
-    signal mem_sdone  : std_logic;
-    signal mem_done   : std_logic;
-    signal mem_valid  : std_logic;
-    signal mem_msaln  : std_logic;
-
-    signal mul_result : std_logic_vector(31 downto 0);
-    signal mul_done   : std_logic;
-    signal mul_valid  : std_logic;
-
-    signal lui_result : std_logic_vector(31 downto 0);
-    signal lui_valid  : std_logic;
-    signal lui_done   : std_logic;
-
-    signal aui_result : std_logic_vector(31 downto 0);
-    signal aui_valid  : std_logic;
-    signal aui_done   : std_logic;
-
+    -- Debug signals for datapath
     signal result     : std_logic_vector(31 downto 0);
     signal valid      : std_logic;
-    signal done       : std_logic;
 begin
     
     CreateClock(clk=>i_clk, period=>5 ns);
 
-    eDut : ControlEngine
+    eControlDut : ControlEngine
     port map (
         -- System level signals
         i_clk    => i_clk,
@@ -147,138 +115,54 @@ begin
         o_instr_rvalid => instr_rvalid
     );
 
-
-    eAlu : Alu
+    eDataDut : DataPath
     port map (
-        i_opcode => dpath_opcode,
-        i_funct3 => dpath_funct3,
-        i_funct7 => dpath_funct7,
-        i_itype  => dpath_itype,
-        i_opA    => opA,
-        i_opB    => opB,
-        i_shamt  => dpath_rs2,
-
-        o_res    => alu_result,
-        o_valid  => alu_valid
-    );
-
-    alu_done <= alu_valid;
-
-    eBranchUnit : BranchUnit
-    port map (
-        i_pc     => dpath_pc,
-        i_opcode => dpath_opcode,
-        i_funct3 => dpath_funct3,
-        i_itype  => dpath_itype,
-        i_jtype  => dpath_jtype,
-        i_btype  => dpath_btype,
-        i_opA    => opA,
-        i_opB    => opB,
-
-        o_nxtpc   => dpath_nxtpc,
-        o_pjpc    => bu_result,
-        o_btaken  => dpath_btaken,
-        o_jtaken  => jtaken,
-        o_done    => bu_done,
-        o_bexcept => bu_except
-    );
-
-    dpath_jtaken <= jtaken;
-    bu_valid <= jtaken;
-
-    eMemAccessUnit : MemAccessUnit
-    port map (
-        i_clk    => i_clk,
-        i_opcode => dpath_opcode,
-        i_opA    => opA,
-        i_itype  => dpath_itype,
-        i_stype  => dpath_stype,
-        i_funct3 => dpath_funct3,
-        
-        o_addr => data_addr,
-        o_men  => data_ren,
-        o_mwen => data_wen,
-        i_ack  => '1', -- Revisit this. Bus currently doesn't use it.
-
-        i_rvalid => data_rvalid,
-        i_rdata  => data_rdata,
-        
-        o_data  => mem_result,
-        o_ldone => mem_ldone,
-        o_sdone => mem_sdone,
-        o_msaln => mem_msaln
-    );
-
-    mem_valid  <= mem_ldone;
-    mem_done   <= mem_ldone or mem_sdone;
-    data_wdata <= opB;
-    
-    eMExtension : MExtensionUnit
-    port map (
-        i_clk    => i_clk,
-        i_opcode => dpath_opcode,
-        i_funct3 => dpath_funct3,
-        i_funct7 => dpath_funct7,
-        i_opA    => opA,
-        i_opB    => opB,
-        o_result => mul_result,
-        o_done   => mul_done
-    );
-
-    mul_valid <= mul_done;
-
-    lui_result <= dpath_utype& x"000";
-    lui_valid <= bool2bit(dpath_opcode = cLoadUpperOpcode);
-    lui_done  <= lui_valid;
-    
-    aui_result <= std_logic_vector(unsigned(dpath_pc)+ unsigned(lui_result));
-    aui_valid <= bool2bit(dpath_opcode = cAuipcOpcode);
-    aui_done  <= aui_valid;
-
-    ResultMux: process(
-        alu_result, alu_valid, 
-        bu_result,  bu_valid, 
-        mem_result, mem_valid, 
-        mul_result, mul_valid,
-        lui_result, lui_valid,
-        aui_result, aui_valid)
-    begin
-        if (alu_valid = '1') then
-            result <= alu_result;
-        elsif (bu_valid = '1') then
-            result <= bu_result;
-        elsif (mem_valid = '1') then
-            result <= mem_result;
-        elsif (mul_valid = '1') then
-            result <= mul_result;
-        elsif (lui_valid = '1') then
-            result <= lui_result;
-        elsif (aui_valid = '1') then
-            result <= aui_result;
-        else
-            result <= x"00000000";
-        end if;
-    end process ResultMux;
-
-    valid <= alu_valid or bu_valid or mem_valid or mul_valid or lui_valid or aui_valid;
-    done  <= alu_done or bu_done or mem_done or mul_done or lui_done or aui_done;
-
-    dpath_done <= done;
-
-    eRegisters : RegisterFile
-    generic map (
-        cDataWidth    => 32,
-        cAddressWidth => 5
-    ) port map (
+        -- System level signals
         i_clk    => i_clk,
         i_resetn => i_resetn,
-        i_rs1    => dpath_rs1,
-        i_rs2    => dpath_rs2,
-        i_rd     => dpath_rd,
-        i_result => result,
-        i_wen    => valid,
-        o_opA    => opA,
-        o_opB    => opB
+
+        -- Bus Signals
+        o_data_addr   => data_addr,
+        o_data_ren    => data_ren,
+        o_data_wen    => data_wen,
+        o_data_wdata  => data_wdata,
+        i_data_rdata  => data_rdata,
+        i_data_rvalid => data_rvalid,
+
+        -- Datapath Signals
+        i_dpath_pc     => dpath_pc,
+        i_dpath_opcode => dpath_opcode,
+        i_dpath_rs1    => dpath_rs1,
+        i_dpath_rs2    => dpath_rs2,
+        i_dpath_rd     => dpath_rd,
+        i_dpath_funct3 => dpath_funct3,
+        i_dpath_funct7 => dpath_funct7,
+        i_dpath_itype  => dpath_itype,
+        i_dpath_stype  => dpath_stype,
+        i_dpath_btype  => dpath_btype,
+        i_dpath_utype  => dpath_utype,
+        i_dpath_jtype  => dpath_jtype,
+        o_dpath_done   => dpath_done,
+        o_dpath_jtaken => dpath_jtaken,
+        o_dpath_btaken => dpath_btaken,
+        o_dpath_nxtpc  => dpath_nxtpc,
+
+        o_dbg_result => result,
+        o_dbg_valid  => valid
+    );
+
+    eRam : RandomRam
+    generic map (
+        cCheckUninitialized => false
+    ) port map (
+        i_clk         => i_clk,
+        i_resetn      => i_resetn,
+        i_data_addr   => data_addr,
+        i_data_ren    => data_ren,
+        i_data_wen    => data_wen,
+        i_data_wdata  => data_wdata,
+        o_data_rdata  => data_rdata,
+        o_data_rvalid => data_rvalid
     );
 
     Stimuli: process

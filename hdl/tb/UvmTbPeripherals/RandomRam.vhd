@@ -101,7 +101,7 @@ architecture rtl of RandomRam is
             end loop;
 
             -- If we're making sure we dont read uninitialized memory addresses, then assert.
-            assert readonly and cCheckUninitialized report "Uninitialized read detected.";
+            assert (not readonly) or (not cCheckUninitialized) report "Uninitialized read detected.";
 
             -- Create the memory address we're interested in.
             memptr := 
@@ -146,7 +146,7 @@ architecture rtl of RandomRam is
                 end loop;
 
                 -- If we're making sure we dont read uninitialized memory addresses, then assert.
-                assert readonly and cCheckUninitialized report "Uninitialized read detected.";
+                assert (not readonly) or (not cCheckUninitialized) report "Uninitialized read detected.";
 
                 -- Create the memory address we're interested in.
                 memptr.ptr := 
@@ -236,7 +236,7 @@ architecture rtl of RandomRam is
             end loop;            
 
             -- If we're making sure we dont read uninitialized memory addresses, then assert.
-            assert readonly and cCheckUninitialized report "Uninitialized read detected.";
+            assert (not readonly) or (not cCheckUninitialized) report "Uninitialized read detected.";
             o_rdata <= x"00000000";
             o_rvalid <= bool2bit(readonly);
         else
@@ -313,7 +313,7 @@ architecture rtl of RandomRam is
                     o_rvalid <= bool2bit(readonly);
     
                     -- If we're making sure we dont read uninitialized memory addresses, then assert.
-                    assert readonly and cCheckUninitialized report "Uninitialized read detected.";
+                    assert (not readonly) or (not cCheckUninitialized) report "Uninitialized read detected.";
                 end if;
                 memptr := old_memptr;
             end loop;
