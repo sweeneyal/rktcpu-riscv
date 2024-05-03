@@ -45,7 +45,11 @@ entity SimulatedDataPath is
         o_dpath_done   : out std_logic;
         o_dpath_jtaken : out std_logic;
         o_dpath_btaken : out std_logic;
-        o_dpath_nxtpc  : out std_logic_vector(31 downto 0)
+        o_dpath_nxtpc  : out std_logic_vector(31 downto 0);
+
+        -- Debug signals
+        o_dbg_result : out std_logic_vector(31 downto 0);
+        o_dbg_valid  : out std_logic
     );
 end entity SimulatedDataPath;
 
@@ -84,8 +88,11 @@ begin
                     o_dpath_done   => o_dpath_done,
                     o_dpath_jtaken => o_dpath_jtaken,
                     o_dpath_btaken => o_dpath_btaken,
-                    o_dpath_nxtpc  => o_dpath_nxtpc
+                    o_dpath_nxtpc  => o_dpath_nxtpc,
+                    o_dbg_valid    => o_dbg_valid
                 );
+
+                o_dbg_result <= registers(to_natural(i_dpath_rd)).value;
             end if;
         end if;
     end process DataPathSimulation;

@@ -66,6 +66,17 @@ architecture tb of tb_WhiteBox is
     -- Debug signals for datapath
     signal result     : std_logic_vector(31 downto 0);
     signal valid      : std_logic;
+
+    -- Gold signals
+    signal gold_data_addr   : std_logic_vector(31 downto 0);
+    signal gold_data_ren    : std_logic;
+    signal gold_data_wen    : std_logic_vector(3 downto 0);
+    signal gold_data_wdata  : std_logic_vector(31 downto 0);
+
+    signal gold_dpath_done  : std_logic := '0';
+    signal gold_dpath_jtaken: std_logic := '0';
+    signal gold_dpath_btaken: std_logic := '0';
+    signal gold_dpath_nxtpc : std_logic_vector(31 downto 0) := (others => '0');
 begin
     
     CreateClock(clk=>i_clk, period=>5 ns);
@@ -163,6 +174,42 @@ begin
         i_data_wdata  => data_wdata,
         o_data_rdata  => data_rdata,
         o_data_rvalid => data_rvalid
+    );
+
+    eSimulatedDpath : SimulatedDataPath
+    port map (
+        -- System level signals
+        i_clk    => i_clk,
+        i_resetn => i_resetn,
+
+        -- Bus Signals
+        o_data_addr   => gold_data_addr,
+        o_data_ren    => gold_data_ren,
+        o_data_wen    => gold_data_wen,
+        o_data_wdata  => gold_data_wdata,
+        i_data_rdata  => data_rdata,
+        i_data_rvalid => data_rvalid,
+
+        -- Datapath Signals
+        i_dpath_pc     => dpath_pc,
+        i_dpath_opcode => dpath_opcode,
+        i_dpath_rs1    => dpath_rs1,
+        i_dpath_rs2    => dpath_rs2,
+        i_dpath_rd     => dpath_rd,
+        i_dpath_funct3 => dpath_funct3,
+        i_dpath_funct7 => dpath_funct7,
+        i_dpath_itype  => dpath_itype,
+        i_dpath_stype  => dpath_stype,
+        i_dpath_btype  => dpath_btype,
+        i_dpath_utype  => dpath_utype,
+        i_dpath_jtype  => dpath_jtype,
+        o_dpath_done   => gold_dpath_done,
+        o_dpath_jtaken => gold_dpath_jtaken,
+        o_dpath_btaken => gold_dpath_btaken,
+        o_dpath_nxtpc  => gold_dpath_nxtpc,
+
+        o_dbg_result => open,
+        o_dbg_valid => open
     );
 
     Stimuli: process

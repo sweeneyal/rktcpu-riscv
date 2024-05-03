@@ -60,7 +60,8 @@ package RiscVTbTools is
         signal o_dpath_done   : out std_logic;
         signal o_dpath_jtaken : out std_logic;
         signal o_dpath_btaken : out std_logic;
-        signal o_dpath_nxtpc  : out std_logic_vector(31 downto 0)
+        signal o_dpath_nxtpc  : out std_logic_vector(31 downto 0);
+        signal o_dbg_valid    : out std_logic
     );
     
 end package RiscVTbTools;
@@ -470,7 +471,8 @@ package body RiscVTbTools is
         signal o_dpath_done   : out std_logic;
         signal o_dpath_jtaken : out std_logic;
         signal o_dpath_btaken : out std_logic;
-        signal o_dpath_nxtpc  : out std_logic_vector(31 downto 0)
+        signal o_dpath_nxtpc  : out std_logic_vector(31 downto 0);
+        signal o_dbg_valid    : out std_logic
     ) is
         variable lui_result : std_logic_vector(31 downto 0);
         variable opA        : std_logic_vector(31 downto 0);
@@ -549,6 +551,7 @@ package body RiscVTbTools is
             when cStoreOpcode =>
                 assert false report "Memory is not supported in this process. Use simulate_memory instead.";
             when cAluOpcode =>
+                o_dbg_valid <= '1';
                 if (i_dpath_funct7 = "0000001") then -- MULDIV
                     case i_dpath_funct3 is
                         when "000" =>
@@ -636,6 +639,7 @@ package body RiscVTbTools is
                     end case;
                 end if;
             when cAluImmedOpcode =>
+                o_dbg_valid <= '1';
                 case i_dpath_funct3 is
                     when "000" =>
                         registers(to_natural(i_dpath_rd)).value := std_logic_vector(s32_t(opA) + to_s32(i_dpath_itype));
@@ -661,24 +665,32 @@ package body RiscVTbTools is
                         assert false report "Invalid funct for ALUIMMED";
                 end case;
             when cJumpOpcode =>
+                o_dbg_valid <= '1';
                 o_dpath_nxtpc <= std_logic_vector(s32_t(i_dpath_pc) + to_s32(i_dpath_jtype));
                 registers(to_natural(i_dpath_rd)).value := std_logic_vector(s32_t(i_dpath_pc) + 4);
             when cJumpRegOpcode =>
+                o_dbg_valid <= '1';
                 o_dpath_nxtpc <= std_logic_vector(s32_t(opA) + to_s32(i_dpath_itype));
+                registers(to_natural(i_dpath_rd)).value := std_logic_vector(s32_t(i_dpath_pc) + 4);
             when cLoadUpperOpcode =>
+                o_dbg_valid <= '1';
                 registers(to_natural(i_dpath_rd)).value := i_dpath_utype & x"000";
                 o_dpath_done  <= '1';
             when cAuipcOpcode =>
+                o_dbg_valid <= '1';
                 lui_result := i_dpath_utype & x"000";
                 registers(to_natural(i_dpath_rd)).value := std_logic_vector(unsigned(i_dpath_pc) + 
                     unsigned(lui_result));
                 o_dpath_done  <= '1';
             when cFenceOpcode =>
-                assert false report "Ecalls unsupported.";
+                assert false report "Fences unsupported.";
             when cEcallOpcode =>
                 assert false report "Ecalls unsupported.";
+            when "0000000" =>
+                -- Change nothing about the output signals, since this is treated as a stall.
+                null;
             when others =>
-                assert false report "Invalid opcode";
+                assert false report "Invalid opcode: " & to_hstring(i_dpath_opcode);
         end case;
     end procedure;
     
