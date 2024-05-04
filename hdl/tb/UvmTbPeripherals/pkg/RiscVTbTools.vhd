@@ -24,6 +24,8 @@ package RiscVTbTools is
     end record register_tb_t;
     type register_map_t is array (0 to 31) of register_tb_t;
 
+    type memory_state_t is (IDLE, LOAD_START_READ, LOAD_STOP_READ, STORE_START_WRITE);
+
     function generate_registers(default_value : std_logic_vector(31 downto 0)) return register_map_t;
 
     impure function generate_instruction(
@@ -57,6 +59,34 @@ package RiscVTbTools is
         signal i_dpath_btype  : in std_logic_vector(12 downto 0);
         signal i_dpath_utype  : in std_logic_vector(19 downto 0);
         signal i_dpath_jtype  : in std_logic_vector(20 downto 0);
+        signal o_dpath_done   : out std_logic;
+        signal o_dpath_jtaken : out std_logic;
+        signal o_dpath_btaken : out std_logic;
+        signal o_dpath_nxtpc  : out std_logic_vector(31 downto 0);
+        signal o_dbg_valid    : out std_logic
+    );
+
+    procedure simulate_memory(
+        variable registers : inout register_map_t;
+        variable state     : inout memory_state_t;
+
+        -- Bus Signals
+        signal o_data_addr   : out std_logic_vector(31 downto 0);
+        signal o_data_ren    : out std_logic;
+        signal o_data_wen    : out std_logic_vector(3 downto 0);
+        signal o_data_wdata  : out std_logic_vector(31 downto 0);
+        signal i_data_rdata  : in std_logic_vector(31 downto 0);
+        signal i_data_rvalid : in std_logic;
+
+        -- Datapath Signals
+        signal i_dpath_pc     : in std_logic_vector(31 downto 0);
+        signal i_dpath_opcode : in std_logic_vector(6 downto 0);
+        signal i_dpath_rs2    : in std_logic_vector(4 downto 0);
+        signal i_dpath_rs1    : in std_logic_vector(4 downto 0);
+        signal i_dpath_rd     : in std_logic_vector(4 downto 0);
+        signal i_dpath_funct3 : in std_logic_vector(2 downto 0);
+        signal i_dpath_itype  : in std_logic_vector(11 downto 0);
+        signal i_dpath_stype  : in std_logic_vector(11 downto 0);
         signal o_dpath_done   : out std_logic;
         signal o_dpath_jtaken : out std_logic;
         signal o_dpath_btaken : out std_logic;
@@ -691,6 +721,116 @@ package body RiscVTbTools is
                 null;
             when others =>
                 assert false report "Invalid opcode: " & to_hstring(i_dpath_opcode);
+        end case;
+    end procedure;
+
+    procedure simulate_memory(
+        variable registers : inout register_map_t;
+        variable state     : inout memory_state_t;
+
+        -- Bus Signals
+        signal o_data_addr   : out std_logic_vector(31 downto 0);
+        signal o_data_ren    : out std_logic;
+        signal o_data_wen    : out std_logic_vector(3 downto 0);
+        signal o_data_wdata  : out std_logic_vector(31 downto 0);
+        signal i_data_rdata  : in std_logic_vector(31 downto 0);
+        signal i_data_rvalid : in std_logic;
+
+        -- Datapath Signals
+        signal i_dpath_pc     : in std_logic_vector(31 downto 0);
+        signal i_dpath_opcode : in std_logic_vector(6 downto 0);
+        signal i_dpath_rs1    : in std_logic_vector(4 downto 0);
+        signal i_dpath_rs2    : in std_logic_vector(4 downto 0);
+        signal i_dpath_rd     : in std_logic_vector(4 downto 0);
+        signal i_dpath_funct3 : in std_logic_vector(2 downto 0);
+        signal i_dpath_itype  : in std_logic_vector(11 downto 0);
+        signal i_dpath_stype  : in std_logic_vector(11 downto 0);
+        signal o_dpath_done   : out std_logic;
+        signal o_dpath_jtaken : out std_logic;
+        signal o_dpath_btaken : out std_logic;
+        signal o_dpath_nxtpc  : out std_logic_vector(31 downto 0);
+        signal o_dbg_valid    : out std_logic
+    ) is 
+        variable opA : std_logic_vector(31 downto 0);
+        variable opB : std_logic_vector(31 downto 0);
+    begin
+        o_dpath_jtaken <= '0';
+        o_dpath_btaken <= '0';
+        o_dpath_nxtpc  <= x"00000000";
+
+        opA := registers(to_natural(i_dpath_rs1)).value;
+        opB := registers(to_natural(i_dpath_rs2)).value;
+        case i_dpath_opcode is
+            when cLoadOpcode =>
+                if (state = IDLE) then
+                    state := LOAD_START_READ;
+                end if;
+                case state is
+                    when LOAD_START_READ =>
+                        o_data_addr  <= std_logic_vector(s32_t(opA) + to_s32(i_dpath_itype));
+                        o_data_ren   <= '1';
+                        o_data_wen   <= "0000";
+                        o_data_wdata <= x"00000000";
+                        o_dpath_done <= '0';
+                        state        := LOAD_STOP_READ;
+                
+                    when LOAD_STOP_READ =>
+                        if (i_data_rvalid = '1') then
+                            case i_dpath_funct3 is
+                                when "000" =>
+                                    registers(to_natural(i_dpath_rd)).value := std_logic_vector(resize(signed(i_data_rdata(7 downto 0)), 32));
+                                when "001" =>
+                                    registers(to_natural(i_dpath_rd)).value := std_logic_vector(resize(signed(i_data_rdata(15 downto 0)), 32));
+                                when "010" =>
+                                    registers(to_natural(i_dpath_rd)).value := i_data_rdata;
+                                when "100" =>
+                                    registers(to_natural(i_dpath_rd)).value := std_logic_vector(resize(unsigned(i_data_rdata(7 downto 0)), 32));
+                                when "101" =>
+                                    registers(to_natural(i_dpath_rd)).value := std_logic_vector(resize(unsigned(i_data_rdata(15 downto 0)), 32));
+                                when others =>
+                                    registers(to_natural(i_dpath_rd)).value := i_data_rdata;
+                            end case;
+                            o_dpath_done <= '1';
+                            o_dbg_valid  <= '1';
+                            o_data_addr  <= x"00000000";
+                            o_data_ren   <= '0';
+                            o_data_wen   <= "0000";
+                            o_data_wdata <= x"00000000";
+                            state        := IDLE;
+                        end if;
+                    when others =>
+                        assert false report "State does not match opcode.";
+                end case;
+            when cStoreOpcode =>
+                if (state = IDLE) then
+                    state := STORE_START_WRITE;
+                end if;
+                case state is
+                    when STORE_START_WRITE =>
+                        case i_dpath_funct3(1 downto 0) is
+                            when "00" =>
+                                o_data_wen <= "0001";
+                            when "01" =>
+                                o_data_wen <= "0011";
+                            when "10" =>
+                                o_data_wen <= "1111";
+                            when others =>
+                                assert false report "Invalid funct3 for store opcode";
+                                o_data_wen <= "0000";
+                        end case;
+                        o_data_addr  <= std_logic_vector(s32_t(opA) + to_s32(i_dpath_stype));
+                        o_data_ren   <= '1';
+                        o_data_wdata <= opB;
+                        o_dpath_done <= '1';
+                        state        := IDLE;
+                
+                    when others =>
+                        assert false report "State does not match opcode.";
+                end case;
+        
+            when others =>
+                assert false report "Unsupported instruction. Use simulate_instruction";
+        
         end case;
     end procedure;
     

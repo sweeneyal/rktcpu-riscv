@@ -31,7 +31,6 @@ architecture tb of tb_MemAccessUnit is
     signal addr   : std_logic_vector(31 downto 0);
     signal men    : std_logic;
     signal mwen   : std_logic_vector(3 downto 0);
-    signal ack    : std_logic;
     signal rvalid : std_logic;
     signal rdata  : std_logic_vector(31 downto 0);
     signal data   : std_logic_vector(31 downto 0);
@@ -102,7 +101,6 @@ begin
         o_addr => addr,
         o_men  => men,
         o_mwen => mwen,
-        i_ack  => ack,
 
         i_rvalid => rvalid,
         i_rdata  => rdata,
@@ -125,7 +123,6 @@ begin
                 itype  <= (others => '0');
                 stype  <= to_slv(4, 12);
                 funct3 <= "010";
-                ack    <= '0';
                 rvalid <= '0';
                 rdata  <= (others => '0');
                 wdata  <= RandData.RandSlv(x"00000000", x"FFFFFFFF");
@@ -143,7 +140,6 @@ begin
                 itype  <= (others => '0');
                 stype  <= to_slv(3, 12);
                 funct3 <= "010";
-                ack    <= '0';
                 rvalid <= '0';
                 rdata  <= (others => '0');
                 wdata  <= RandData.RandSlv(x"00000000", x"FFFFFFFF");
@@ -167,7 +163,6 @@ begin
                 itype  <= (others => '0');
                 stype  <= to_slv(4, 12);
                 funct3 <= "010";
-                ack    <= '0';
                 rvalid <= '0';
                 rdata  <= (others => '0');
                 wdata  <= RandData.RandSlv(x"00000000", x"FFFFFFFF");

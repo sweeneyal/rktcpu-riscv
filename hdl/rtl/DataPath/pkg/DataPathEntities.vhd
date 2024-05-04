@@ -147,11 +147,9 @@ component MemAccessUnit is
         i_stype  : in std_logic_vector(11 downto 0);
         i_funct3 : in std_logic_vector(2 downto 0);
         
-        o_addr : out std_logic_vector(31 downto 0);
-        o_men  : out std_logic;
-        o_mwen : out std_logic_vector(3 downto 0);
-        i_ack  : in std_logic;
-
+        o_addr   : out std_logic_vector(31 downto 0);
+        o_men    : out std_logic;
+        o_mwen   : out std_logic_vector(3 downto 0);
         i_rvalid : in  std_logic;
         i_rdata  : in  std_logic_vector(31 downto 0);
 

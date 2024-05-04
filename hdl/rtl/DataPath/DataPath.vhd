@@ -142,8 +142,6 @@ begin
         o_addr => o_data_addr,
         o_men  => o_data_ren,
         o_mwen => o_data_wen,
-        i_ack  => '1', -- Revisit this. Bus currently doesn't use it.
-
         i_rvalid => i_data_rvalid,
         i_rdata  => i_data_rdata,
         

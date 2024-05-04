@@ -12,6 +12,9 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
+library scrv;
+    use scrv.RiscVDefinitions.all;
+
 library tb;
     use tb.RiscVTbTools.all;
 
@@ -58,41 +61,74 @@ begin
     
     DataPathSimulation: process(i_clk)
         variable registers : register_map_t := generate_registers(x"00000001");
+        variable state     : memory_state_t := IDLE;
     begin
         if rising_edge(i_clk) then
             if (i_resetn = '0') then
                 registers := generate_registers(x"00000001");
             else
-                simulate_instruction(
-                    registers => registers,
+                if (i_dpath_opcode = cLoadOpcode or i_dpath_opcode = cStoreOpcode) then
+                    simulate_memory(
+                        registers => registers,
+                        state     => state,
 
-                    o_data_addr   => o_data_addr,
-                    o_data_ren    => o_data_ren,
-                    o_data_wen    => o_data_wen,
-                    o_data_wdata  => o_data_wdata,
-                    i_data_rdata  => i_data_rdata,
-                    i_data_rvalid => i_data_rvalid,
+                        -- Bus Signals
+                        o_data_addr   => o_data_addr,
+                        o_data_ren    => o_data_ren,
+                        o_data_wen    => o_data_wen,
+                        o_data_wdata  => o_data_wdata,
+                        i_data_rdata  => i_data_rdata,
+                        i_data_rvalid => i_data_rvalid,
 
-                    i_dpath_pc     => i_dpath_pc,
-                    i_dpath_opcode => i_dpath_opcode,
-                    i_dpath_rs1    => i_dpath_rs1,
-                    i_dpath_rs2    => i_dpath_rs2,
-                    i_dpath_rd     => i_dpath_rd,
-                    i_dpath_funct3 => i_dpath_funct3,
-                    i_dpath_funct7 => i_dpath_funct7,
-                    i_dpath_itype  => i_dpath_itype,
-                    i_dpath_stype  => i_dpath_stype,
-                    i_dpath_btype  => i_dpath_btype,
-                    i_dpath_utype  => i_dpath_utype,
-                    i_dpath_jtype  => i_dpath_jtype,
-                    o_dpath_done   => o_dpath_done,
-                    o_dpath_jtaken => o_dpath_jtaken,
-                    o_dpath_btaken => o_dpath_btaken,
-                    o_dpath_nxtpc  => o_dpath_nxtpc,
-                    o_dbg_valid    => o_dbg_valid
-                );
-
-                o_dbg_result <= registers(to_natural(i_dpath_rd)).value;
+                        -- Datapath Signals
+                        i_dpath_pc     => i_dpath_pc,
+                        i_dpath_opcode => i_dpath_opcode,
+                        i_dpath_rs1    => i_dpath_rs1,
+                        i_dpath_rs2    => i_dpath_rs2,
+                        i_dpath_rd     => i_dpath_rd,
+                        i_dpath_funct3 => i_dpath_funct3,
+                        i_dpath_itype  => i_dpath_itype,
+                        i_dpath_stype  => i_dpath_stype,
+                        o_dpath_done   => o_dpath_done,
+                        o_dpath_jtaken => o_dpath_jtaken,
+                        o_dpath_btaken => o_dpath_btaken,
+                        o_dpath_nxtpc  => o_dpath_nxtpc,
+                        o_dbg_valid    => o_dbg_valid
+                    );
+                    
+                    o_dbg_result <= registers(to_natural(i_dpath_rd)).value;
+                else
+                    simulate_instruction(
+                        registers => registers,
+    
+                        o_data_addr   => o_data_addr,
+                        o_data_ren    => o_data_ren,
+                        o_data_wen    => o_data_wen,
+                        o_data_wdata  => o_data_wdata,
+                        i_data_rdata  => i_data_rdata,
+                        i_data_rvalid => i_data_rvalid,
+    
+                        i_dpath_pc     => i_dpath_pc,
+                        i_dpath_opcode => i_dpath_opcode,
+                        i_dpath_rs1    => i_dpath_rs1,
+                        i_dpath_rs2    => i_dpath_rs2,
+                        i_dpath_rd     => i_dpath_rd,
+                        i_dpath_funct3 => i_dpath_funct3,
+                        i_dpath_funct7 => i_dpath_funct7,
+                        i_dpath_itype  => i_dpath_itype,
+                        i_dpath_stype  => i_dpath_stype,
+                        i_dpath_btype  => i_dpath_btype,
+                        i_dpath_utype  => i_dpath_utype,
+                        i_dpath_jtype  => i_dpath_jtype,
+                        o_dpath_done   => o_dpath_done,
+                        o_dpath_jtaken => o_dpath_jtaken,
+                        o_dpath_btaken => o_dpath_btaken,
+                        o_dpath_nxtpc  => o_dpath_nxtpc,
+                        o_dbg_valid    => o_dbg_valid
+                    );
+    
+                    o_dbg_result <= registers(to_natural(i_dpath_rd)).value;
+                end if;
             end if;
         end if;
     end process DataPathSimulation;
