@@ -8,6 +8,7 @@ library ieee;
 library osvvm;
     use osvvm.TbUtilPkg.all;
     use osvvm.RandomPkg.all;
+    use osvvm.RandomBasePkg.all;
 
 library universal;
     use universal.CommonFunctions.all;
@@ -30,7 +31,9 @@ package RiscVTbTools is
 
     impure function generate_instruction(
         registers : register_map_t; 
-        forcedOpcode : integer := -1) 
+        forcedOpcode : integer := -1;
+        seed0 : integer := 42;
+        seed1 : integer := 42) 
     return std_logic_vector;
 
     function get_opcode_index(opcode : std_logic_vector(6 downto 0)) return integer;
@@ -113,9 +116,11 @@ package body RiscVTbTools is
     end function;
     
     impure function generate_instruction(
-        registers : register_map_t; 
-        forcedOpcode : integer := -1) 
-    return std_logic_vector is
+        registers    : register_map_t;
+        forcedOpcode : integer := -1;
+        seed0        : positive := 42;
+        seed1        : positive := 42
+    ) return std_logic_vector is
         variable RandData : RandomPType;
         variable valid_instruction : boolean := false;
         variable opcode_idx : natural;
@@ -132,6 +137,7 @@ package body RiscVTbTools is
         variable utype  : std_logic_vector(31 downto 0);
         variable instruction : std_logic_vector(31 downto 0);
     begin
+        RandData.SetSeed(GenRandSeed(integer_vector'(seed0, seed1)));
         while not valid_instruction loop
             -- Each possible opcode index has a valid opcode associated with it.
             -- Each opcode then has a set of all possible valid instructions for these.
@@ -347,7 +353,7 @@ package body RiscVTbTools is
                     instruction(6 downto 0) := cJumpOpcode;
                     -- Generate a random jtype immediate
                     jtype := RandData.RandSlv("000000000000000000000", 
-                        "1111111111111111111111");
+                        "111111111111111111111");
                     instruction(31) := jtype(20);
                     instruction(30 downto 21) := jtype(10 downto 1);
                     instruction(20) := jtype(11);

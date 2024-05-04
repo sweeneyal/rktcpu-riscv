@@ -77,6 +77,8 @@ architecture tb of tb_WhiteBox is
     signal gold_dpath_jtaken: std_logic := '0';
     signal gold_dpath_btaken: std_logic := '0';
     signal gold_dpath_nxtpc : std_logic_vector(31 downto 0) := (others => '0');
+    signal gold_dbg_result  : std_logic_vector(31 downto 0);
+    signal gold_dbg_valid   : std_logic;
 begin
     
     CreateClock(clk=>i_clk, period=>5 ns);
@@ -208,8 +210,8 @@ begin
         o_dpath_btaken => gold_dpath_btaken,
         o_dpath_nxtpc  => gold_dpath_nxtpc,
 
-        o_dbg_result => open,
-        o_dbg_valid => open
+        o_dbg_result => gold_dbg_result,
+        o_dbg_valid => gold_dbg_valid
     );
 
     Stimuli: process
@@ -223,10 +225,18 @@ begin
                 wait until rising_edge(i_clk);
                 wait for 100 ps;
                 i_resetn <= '1';
-                wait for 100 ns;
+                wait for 1000 ns;
             end if;
         end loop;
         test_runner_cleanup(runner);
     end process Stimuli;
+
+    ResultChecker: process(gold_dbg_result, gold_dbg_valid, result, valid)
+    begin
+        if (valid = '1') then
+            --assert(gold_dbg_valid = '1') report "Instruction failed, incorrect valid response. Opcode = " & to_hstring(dpath_opcode) & " Valid = " & std_logic'image(gold_dbg_valid);
+            --assert(gold_dbg_result = result) report "Instruction failed, incorrect result from datapath.";
+        end if;
+    end process ResultChecker;
     
 end architecture tb;

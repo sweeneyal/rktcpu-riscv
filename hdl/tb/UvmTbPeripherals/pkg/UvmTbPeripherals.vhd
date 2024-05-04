@@ -71,7 +71,9 @@ component InstructionMemory is
         i_instr_wen    : in std_logic_vector(3 downto 0);
         i_instr_wdata  : in std_logic_vector(31 downto 0);
         o_instr_rdata  : out std_logic_vector(31 downto 0);
-        o_instr_rvalid : out std_logic
+        o_instr_rvalid : out std_logic;
+        o_seed0        : out positive;
+        o_seed1        : out positive
     );
 end component InstructionMemory;
 

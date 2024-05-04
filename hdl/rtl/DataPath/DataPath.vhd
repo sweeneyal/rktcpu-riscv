@@ -205,6 +205,8 @@ begin
     valid <= alu_valid or bu_valid or mem_valid or mul_valid or lui_valid or aui_valid;
     done  <= alu_done or bu_done or mem_done or mul_done or lui_done or aui_done;
 
+    o_dbg_valid <= valid;
+    o_dbg_result <= result;
     o_dpath_done <= done;
 
     eRegisters : RegisterFile
