@@ -1,8 +1,8 @@
-# scrv
+# rktcpu-riscv
 
 [![VHDL Testbenches](https://github.com/sweeneyal/scrv/actions/workflows/scrv_tests.yml/badge.svg)](https://github.com/sweeneyal/scrv/actions/workflows/scrv_tests.yml)
 
-Soft-Core RISC-V (SCRV) affectionately referred to as Scurvy is yet another soft-core RISC-V processor based on the latest standard. The goal of this project is to build a processor targeting Xilinx products allowing me to use it in all sorts of future projects. 
+AsteRISC-V is yet another soft-core RISC-V processor based on the latest rv32im standard. The goal of this project is to build a processor targeting Xilinx products allowing me to use it in all sorts of future projects. 
 
 The planned milestones are as follows:
 - All components have at least one unit test that passes.

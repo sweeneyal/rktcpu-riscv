@@ -13,9 +13,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.RiscVDefinitions.all;
-    use scrv.DataPathEntities.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 entity tb_DspMultiplier is
     generic (runner_cfg : string);
@@ -33,7 +32,7 @@ begin
     
     CreateClock(clk=>clk, period=>5 ns);
 
-    eDut : DspMultiplier
+    eDut : entity rktcpu.DspMultiplier
     port map (
         i_clk    => clk,
         i_en     => en,

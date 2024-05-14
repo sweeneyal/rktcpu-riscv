@@ -6,9 +6,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.DataPathEntities.all;
-    use scrv.RiscVDefinitions.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 entity DataPath is
     port (
@@ -92,7 +91,7 @@ architecture rtl of DataPath is
     attribute DONT_TOUCH of ResultMux : label is "true";
 begin
     
-    eAlu : Alu
+    eAlu : entity rktcpu.Alu
     port map (
         i_opcode => i_dpath_opcode,
         i_funct3 => i_dpath_funct3,
@@ -108,7 +107,7 @@ begin
 
     alu_done <= alu_valid;
 
-    eBranchUnit : BranchUnit
+    eBranchUnit : entity rktcpu.BranchUnit
     port map (
         i_pc     => i_dpath_pc,
         i_opcode => i_dpath_opcode,
@@ -130,7 +129,7 @@ begin
     o_dpath_jtaken <= jtaken;
     bu_valid <= jtaken;
 
-    eMemAccessUnit : MemAccessUnit
+    eMemAccessUnit : entity rktcpu.MemAccessUnit
     port map (
         i_clk    => i_clk,
         i_opcode => i_dpath_opcode,
@@ -155,7 +154,7 @@ begin
     mem_done     <= mem_ldone or mem_sdone;
     o_data_wdata <= opB;
     
-    eMExtension : MExtensionUnit
+    eMExtension : entity rktcpu.MExtensionUnit
     port map (
         i_clk    => i_clk,
         i_opcode => i_dpath_opcode,
@@ -209,7 +208,7 @@ begin
     o_dbg_result <= result;
     o_dpath_done <= done;
 
-    eRegisters : RegisterFile
+    eRegisters : entity rktcpu.RegisterFile
     generic map (
         cDataWidth    => 32,
         cAddressWidth => 5

@@ -12,8 +12,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.RiscVDefinitions.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 library tb;
     use tb.RiscVTbTools.all;

@@ -6,8 +6,7 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.ControlEntities.all;
+library rktcpu;
 
 entity SimpleFifo is
     generic (
@@ -108,7 +107,7 @@ begin
     addra <= to_slv(head, cAddressWidth);
     addrb <= to_slv(tail, cAddressWidth);
 
-    eBram : DualPortBram
+    eBram : entity rktcpu.DualPortBram
     generic map (
         cAddressWidth => cAddressWidth,
         cMaxAddress   => 2 ** cAddressWidth - 1,

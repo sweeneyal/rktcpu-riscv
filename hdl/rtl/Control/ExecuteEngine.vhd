@@ -6,9 +6,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.ControlEntities.all;
-    use scrv.RiscVDefinitions.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 entity ExecuteEngine is
     port (

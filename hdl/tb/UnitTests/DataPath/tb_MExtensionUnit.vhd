@@ -13,9 +13,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.RiscVDefinitions.all;
-    use scrv.DataPathEntities.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 entity tb_MExtensionUnit is
     generic (runner_cfg : string);
@@ -34,7 +33,7 @@ begin
     
     CreateClock(clk=>clk, period=>5 ns);
 
-    eMExtension : MExtensionUnit
+    eMExtension : entity rktcpu.MExtensionUnit
     port map (
         i_clk    => clk,
         i_opcode => opcode,

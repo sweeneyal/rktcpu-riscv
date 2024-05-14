@@ -6,10 +6,9 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.RiscVDefinitions.all;
-    use scrv.ControlEntities.all;
-    use scrv.CsrDefinitions.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
+    use rktcpu.CsrDefinitions.all;
 
 entity ZiCsr is
     port (

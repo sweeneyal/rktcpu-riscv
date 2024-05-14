@@ -6,9 +6,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.RiscVDefinitions.all;
-    use scrv.DataPathEntities.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 entity MExtensionUnit is
     port (
@@ -51,7 +50,7 @@ begin
         end if;
     end process InternalControl;
 
-    eDspMult : DspMultiplier
+    eDspMult : entity rktcpu.DspMultiplier
     port map (
         i_clk    => i_clk,
         i_en     => mul_en,
@@ -64,7 +63,7 @@ begin
 
     issigned <= not i_funct3(0);
 
-    eGdu : GoldschmidtDivisionUnit
+    eGdu : entity rktcpu.GoldschmidtDivisionUnit
     port map (
         i_clk    => i_clk,
         i_en     => div_en,

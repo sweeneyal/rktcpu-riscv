@@ -12,9 +12,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.RiscVDefinitions.all;
-    use scrv.DataPathEntities.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 entity tb_DataPath is
     generic (runner_cfg : string);
@@ -54,7 +53,7 @@ begin
     
     CreateClock(clk=>i_clk, period=>5 ns);
 
-    eDut : DataPath
+    eDut : entity rktcpu.DataPath
     port map (
         -- System level signals
         i_clk    => i_clk,

@@ -2,8 +2,7 @@ library ieee;
     use ieee.numeric_std.all;
     use ieee.std_logic_1164.all;
 
-library scrv;
-    use scrv.ControlEntities.all;
+library rktcpu;
 
 entity ControlEngine is
     port (
@@ -46,7 +45,7 @@ architecture rtl of ControlEngine is
     signal ivalid : std_logic;
 begin
     
-    eFetchEngine : FetchEngine
+    eFetchEngine : entity rktcpu.FetchEngine
     port map (
         i_clk    => i_clk,
         i_resetn => i_resetn,
@@ -63,7 +62,7 @@ begin
         o_full   => open
     );
 
-    eExecuteEngine : ExecuteEngine
+    eExecuteEngine : entity rktcpu.ExecuteEngine
     port map (
         i_clk    => i_clk,
         i_resetn => i_resetn,

@@ -25,10 +25,10 @@ for file in files:
     universal.add_source_file(file)
 
 # Create library 'lib'
-scrv = vu.add_library("scrv")
+rktcpu = vu.add_library("rktcpu")
 files = get_vhdl_files('./hdl/rtl', recursive=True)
 for file in files:
-    scrv.add_source_file(file)
+    rktcpu.add_source_file(file)
 
 tb = vu.add_library("tb")
 files = get_vhdl_files('./hdl/tb', recursive=True)

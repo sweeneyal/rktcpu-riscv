@@ -12,9 +12,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.RiscVDefinitions.all;
-    use scrv.DataPathEntities.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 entity tb_RegisterFile is
     generic (runner_cfg : string);
@@ -34,7 +33,7 @@ begin
     
     CreateClock(clk=>clk, period=>5 ns);
 
-    eDut : RegisterFile
+    eDut : entity rktcpu.RegisterFile
     generic map (
         cDataWidth    => 32,
         cAddressWidth => 5

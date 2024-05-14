@@ -13,9 +13,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.RiscVDefinitions.all;
-    use scrv.DataPathEntities.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 entity tb_BranchUnit is
     generic (runner_cfg : string);
@@ -42,7 +41,7 @@ begin
     
     CreateClock(clk=>clk, period=>5 ns);
 
-    eDut : BranchUnit
+    eDut : entity rktcpu.BranchUnit
     port map (
         i_pc     => pc,
         i_opcode => opcode,

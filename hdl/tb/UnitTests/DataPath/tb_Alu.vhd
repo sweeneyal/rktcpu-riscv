@@ -13,9 +13,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.RiscVDefinitions.all;
-    use scrv.DataPathEntities.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 entity tb_Alu is
     generic (runner_cfg : string);
@@ -36,7 +35,7 @@ begin
 
     CreateClock(clk=>clk, period=>5 ns);
     
-    eDut : Alu
+    eDut : entity rktcpu.Alu
     port map (
         i_opcode => opcode,
         i_funct3 => funct3,

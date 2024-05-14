@@ -12,9 +12,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.RiscVDefinitions.all;
-    use scrv.ControlEntities.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 entity tb_ZiCsr is
     generic (runner_cfg : string);
@@ -37,7 +36,7 @@ begin
     
     CreateClock(clk=>clk, period=>5 ns);
 
-    eDut : ZiCsr
+    eDut : entity rktcpu.ZiCsr
     port map (
         i_clk     => clk,
         i_resetn  => resetn,

@@ -12,10 +12,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.RiscVDefinitions.all;
-    use scrv.ControlEntities.all;
-    use scrv.DataPathEntities.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 library tb;
     use tb.UvmTbPeripherals.all;
@@ -83,7 +81,7 @@ begin
     
     CreateClock(clk=>i_clk, period=>5 ns);
 
-    eControlDut : ControlEngine
+    eControlDut : entity rktcpu.ControlEngine
     port map (
         -- System level signals
         i_clk    => i_clk,
@@ -128,7 +126,7 @@ begin
         o_instr_rvalid => instr_rvalid
     );
 
-    eDataDut : DataPath
+    eDataDut : entity rktcpu.DataPath
     port map (
         -- System level signals
         i_clk    => i_clk,

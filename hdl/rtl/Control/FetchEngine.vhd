@@ -6,8 +6,7 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.ControlEntities.all;
+library rktcpu;
 
 entity FetchEngine is
     port (
@@ -99,7 +98,7 @@ begin
     -- Same conditions just inverted.
     resetn <= not bool2bit(i_resetn = '0' or fetch_engine.state = FETCH_RESET);
 
-    eFifo : SimpleFifo
+    eFifo : entity rktcpu.SimpleFifo
     generic map (
         cAddressWidth => 9,
         cDataWidth    => 32

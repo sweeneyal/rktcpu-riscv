@@ -13,9 +13,8 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-library scrv;
-    use scrv.RiscVDefinitions.all;
-    use scrv.ControlEntities.all;
+library rktcpu;
+    use rktcpu.RiscVDefinitions.all;
 
 library tb;
     use tb.RiscVTbTools.all;
@@ -51,7 +50,7 @@ begin
     
     CreateClock(clk=>clk, period=>5 ns);
 
-    eDut : ExecuteEngine
+    eDut : entity rktcpu.ExecuteEngine
     port map (
         i_clk    => clk,
         i_resetn => resetn,
