@@ -35,6 +35,21 @@ files = get_vhdl_files('./hdl/tb', recursive=True)
 for file in files:
     tb.add_source_file(file)
 
+def encode(tb_cfg):
+    return ", ".join(["%s:%s" % (key, str(tb_cfg[key])) for key in tb_cfg])
+
+tb_cfg = dict(instructions="asm/test002.hex")
+tb_ControlEngine = tb.test_bench('tb_ControlEngine')
+tb_ControlEngine.add_config(name='Test002_AddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+
+tb_cfg = dict(instructions="asm/test002.hex")
+tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
+tb_RktCpuCore.add_config(name='Test002_AddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+
+tb_cfg = dict(instructions="asm/test003.hex")
+tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
+tb_RktCpuCore.add_config(name='Test003_BranchAddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+
 # Run vunit function
 vu.add_compile_option('ghdl.a_flags', ['-frelaxed'])
 vu.set_sim_option('ghdl.elab_flags', ['-frelaxed'])
