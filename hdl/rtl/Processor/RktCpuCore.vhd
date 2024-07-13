@@ -150,7 +150,7 @@ begin
 
         -- Use the adder in the ALU to complete LUI and AUIPC instructions.
         elsif (ctrl_cmn.upper = '1' or ctrl_cmn.auipc = '1') then
-            opB <= std_logic_vector(resize(signed(ctrl_cmn.utype), 32));
+            opB <= ctrl_cmn.utype & x"000";
 
         -- Handle the immediates and normal registers here.
         else
@@ -261,18 +261,41 @@ begin
 
     pcwen <= branch_wen or ctrl_jal.en;
 
-    Aligner: process(memaccess_opB, lsu_addr)
+    o_data_ren <= ctrl_mem.en and not i_data_rvalid;
+    Aligner: process(ctrl_mem, memaccess_opB, lsu_addr)
     begin
         case lsu_addr(1 downto 0) is
             when "00" =>
                 o_data_wdata <= memaccess_opB;
+                if (ctrl_mem.write_type = "000") then
+                    o_data_wen <= "000" & ctrl_mem.store;
+                elsif (ctrl_mem.write_type = "001") then
+                    o_data_wen <= "00" & ctrl_mem.store & ctrl_mem.store;
+                else
+                    o_data_wen <= ctrl_mem.store & ctrl_mem.store &
+                        ctrl_mem.store & ctrl_mem.store;
+                end if;
+            -- It is assumed that if we're writing and the address is misaligned, we are not writing
+            -- more than two bytes maximum.
             when "01" =>
-                o_data_wdata <= memaccess_opB(23 downto 0) & x"00";
+                o_data_wdata <= x"00" & memaccess_opB(15 downto 0) & x"00";
+                if (ctrl_mem.write_type = "000") then
+                    o_data_wen <= "00" & ctrl_mem.store & "0";
+                else
+                    o_data_wen <= "0" & ctrl_mem.store & ctrl_mem.store & "0";
+                end if;
             when "10" =>
                 o_data_wdata <= memaccess_opB(15 downto 0) & x"0000";
+                if (ctrl_mem.write_type = "000") then
+                    o_data_wen <= "0" & ctrl_mem.store & "00";
+                else
+                    o_data_wen <= ctrl_mem.store & ctrl_mem.store & "00";
+                end if;
             when "11" =>
+                o_data_wen   <= ctrl_mem.store & "000";
                 o_data_wdata <= memaccess_opB(7 downto 0) & x"000000";
             when others =>
+                o_data_wen   <= "0000";
                 o_data_wdata <= memaccess_opB;
         end case;
     end process Aligner;
@@ -292,6 +315,8 @@ begin
         i_instret   => instret
     );
 
+    o_data_addr <= lsu_addr;
+
     LsuData: process(i_clk)
     begin
         if rising_edge(i_clk) then
@@ -300,9 +325,24 @@ begin
                 alu_res_ma <= x"00000000";
             else
                 if (i_data_rvalid = '1') then
-                    lsu_rdata  <= i_data_rdata;
+                    case ctrl_mem.write_type(1 downto 0) is
+                        when "00" =>
+                            if (ctrl_mem.write_type(2) = '1') then
+                                lsu_rdata <= std_logic_vector(resize(unsigned(i_data_rdata(7 downto 0)), 32));
+                            else
+                                lsu_rdata <= std_logic_vector(resize(signed(i_data_rdata(7 downto 0)), 32));
+                            end if;
+                        when "01" =>
+                            if (ctrl_mem.write_type(2) = '1') then
+                                lsu_rdata <= std_logic_vector(resize(unsigned(i_data_rdata(15 downto 0)), 32));
+                            else
+                                lsu_rdata <= std_logic_vector(resize(signed(i_data_rdata(15 downto 0)), 32));
+                            end if;
+                        when others =>
+                            lsu_rdata <= i_data_rdata;
+                    end case;
                 end if;
-                alu_res_ma <= alu_res;
+                alu_res_ma   <= alu_res;
                 jump_pjpc_ma <= jump_pjpc;
             end if;
         end if;

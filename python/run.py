@@ -62,6 +62,10 @@ tb_cfg = dict(instructions="asm/test006.hex")
 tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
 tb_RktCpuCore.add_config(name='Test006_SqrtFunction', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
+tb_cfg = dict(instructions="asm/test007.hex")
+tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
+tb_RktCpuCore.add_config(name='Test007_WordMemoryAccesses', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+
 # Run vunit function
 vu.add_compile_option('ghdl.a_flags', ['-frelaxed'])
 vu.set_sim_option('ghdl.elab_flags', ['-frelaxed'])

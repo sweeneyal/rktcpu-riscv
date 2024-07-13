@@ -95,6 +95,18 @@ begin
         o_instr_rvalid => instr_rvalid
     );
 
+    eDmem : entity tb.RandomRam
+    port map (
+        i_clk         => clk,
+        i_resetn      => resetn,
+        i_data_addr   => data_addr,
+        i_data_ren    => data_ren,
+        i_data_wen    => data_wen,
+        i_data_wdata  => data_wdata,
+        o_data_rdata  => data_rdata,
+        o_data_rvalid => data_rvalid
+    );
+
     Stimuli: process
     begin
         test_runner_setup(runner, runner_cfg);

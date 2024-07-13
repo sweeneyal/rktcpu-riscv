@@ -47,66 +47,70 @@ architecture rtl of ControlEngine is
             if (ma_opcode = cLoadOpcode) then
                 -- A hazard that requires an induced stall
                 induce_stall := '1';
+            elsif (ma_opcode = cStoreOpcode or ma_opcode = cBranchOpcode) then
+                -- This is not a hazard because these do not use the rd register
+                hazards_rs1_ex(cMemAccessIdx) := '0';
             else
                 case ex_opcode is
+                    -- These are not hazards because execute does not use the register
                     when cAuipcOpcode | cLoadUpperOpcode | cJumpOpcode =>
                         hazards_rs1_ex(cMemAccessIdx) := '0';
-                        hazards_rs1_ex(cWritebackIdx) := '0';
                     when others =>
                         hazards_rs1_ex(cMemAccessIdx) := '1';
                         hazards_rs1_ex(cWritebackIdx) := '0';
                 end case;
             end if;
-        elsif (ex_rs1 = wb_rd) then
-            case ex_opcode is
-                when cAuipcOpcode | cLoadUpperOpcode | cJumpOpcode =>
-                    hazards_rs1_ex(cMemAccessIdx) := '0';
-                    hazards_rs1_ex(cWritebackIdx) := '0';
-                when others =>
-                    hazards_rs1_ex(cMemAccessIdx) := '0';
-                    hazards_rs1_ex(cWritebackIdx) := '1';
-            end case;
+        end if;
+
+        if (ex_rs1 = wb_rd) then
+            if (wb_opcode = cStoreOpcode or wb_opcode = cBranchOpcode) then
+                -- This is not a hazard because these do not use the rd register
+                hazards_rs1_ex(cWritebackIdx) := '0';
+            else
+                case ex_opcode is
+                    -- These are not hazards because execute does not use the register
+                    when cAuipcOpcode | cLoadUpperOpcode | cJumpOpcode =>
+                        hazards_rs1_ex(cWritebackIdx) := '0';
+                    when others =>
+                        hazards_rs1_ex(cWritebackIdx) := '1';
+                end case;
+            end if;
         end if;
 
         if (ex_rs2 = ma_rd) then
             if (ma_opcode = cLoadOpcode) then
                 -- A hazard that requires an induced stall
                 induce_stall := '1';
+            elsif (ma_opcode = cStoreOpcode or ma_opcode = cBranchOpcode) then
+                -- This is not a hazard because these do not use the rd register
+                hazards_rs2_ex(cMemAccessIdx) := '0';
             else
                 case ex_opcode is
                     when cAuipcOpcode | cLoadUpperOpcode | cJumpOpcode | 
                             cJumpRegOpcode | cLoadOpcode | cAluImmedOpcode => 
                         hazards_rs2_ex(cMemAccessIdx) := '0';
-                        hazards_rs2_ex(cWritebackIdx) := '0';
                     when others =>
                         hazards_rs2_ex(cMemAccessIdx) := '1';
-                        hazards_rs2_ex(cWritebackIdx) := '0';
                 end case;
             end if;
-        elsif (ex_rs2 = wb_rd) then
-            case ex_opcode is
-                when cAuipcOpcode | cLoadUpperOpcode | cJumpOpcode | 
-                        cJumpRegOpcode | cLoadOpcode | cAluImmedOpcode =>
-                    hazards_rs2_ex(cMemAccessIdx) := '0';
-                    hazards_rs2_ex(cWritebackIdx) := '0';
-                when others =>
-                    hazards_rs2_ex(cMemAccessIdx) := '0';
-                    hazards_rs2_ex(cWritebackIdx) := '1';
-            end case;
+        end if;
+        
+        if (ex_rs2 = wb_rd) then
+            if (wb_opcode = cStoreOpcode or wb_opcode = cBranchOpcode) then
+                -- This is not a hazard because these do not use the rd register
+                hazards_rs2_ex(cWritebackIdx) := '0';
+            else
+                case ex_opcode is
+                    when cAuipcOpcode | cLoadUpperOpcode | cJumpOpcode | 
+                            cJumpRegOpcode | cLoadOpcode | cAluImmedOpcode =>
+                        hazards_rs2_ex(cWritebackIdx) := '0';
+                    when others =>
+                        hazards_rs2_ex(cWritebackIdx) := '1';
+                end case;
+            end if;
         end if;
 
-        -- MA hazards are noticably absent from this implementation, this is because I'm
-        -- testing to see if that is a problem.
-        --     1. For math operations, you're not going to see hazards that matter.
-        --        For example, addi t0, t0, 100 will only have hazards in memaccess and writeback,
-        --        but once it gets to memaccess, the instruction is more or less complete.
-        --     2. For memory operations, you have two operations:
-        --            addr = f(rs1, immed), followed by rd = mem[addr], or
-        --            addr = f(rs1, immed), followed by mem[addr] = rs2.
-        --        rs1 and rs2 have the same sources of hazards, specifically memaccess and writeback.
-        --        Therefore, rs1 and rs2 will be settled by the execute stage with the current hazard
-        --        structure.
-        --     3. For jumps and branch instructions, I think the situation is similar.
+        
         return hazards_rs1_ex & hazards_rs1_ma & hazards_rs2_ex & hazards_rs2_ma & induce_stall;
     end function;
 
@@ -140,6 +144,7 @@ architecture rtl of ControlEngine is
     signal wb_res_sel     : std_logic_vector(3 downto 0) := "0000";
     signal ivalid         : std_logic := '0';
     signal induced_stall  : std_logic := '0';
+    signal awaited_mvalid : std_logic := '0';
 begin
 
     o_pc <= std_logic_vector(pc);
@@ -180,6 +185,7 @@ begin
                 if (i_pcwen = '1') then
                     pc <= unsigned(i_pc);
 
+                    instr  <= x"00000000";
                     ivalid <= '0';
                     for ii in cDecodeIdx to cWritebackIdx loop
                         instr_pipe(ii) <= (
@@ -207,14 +213,6 @@ begin
                     stall <= stall_v;
     
                     ivalid <= i_ivalid;
-
-                    if (not (i_mvalid = '0' and awaiting_mvalid = '1') 
-                            or (i_csrdone = '0' and awaiting_csrdone = '1')) then
-                        if (i_ivalid = '1') then
-                            pc  <= pc + 4;
-                            fpc <= pc;
-                        end if;
-                    end if;
                     
                     hazards := compute_hazards(
                         instr_pipe(cDecodeIdx).rs1,
@@ -234,54 +232,81 @@ begin
                     hazards_rs2_ma <= hazards(5);
                     induce_stall   := hazards(6);
                     induced_stall  <= induce_stall;
+                    awaited_mvalid <= awaiting_mvalid;
+
+                    if (not ((i_mvalid = '0' and awaiting_mvalid = '1') 
+                            or (i_csrdone = '0' and awaiting_csrdone = '1')
+                            or (induce_stall = '1'))) then
+                        if (i_ivalid = '1') then
+                            pc  <= pc + 4;
+                            fpc <= pc;
+                        end if;
+                    end if;
+
+                    o_iren <= not induce_stall;
 
                     -- If we're not stalled, then continue to process instructions.
                     if (stall_v = '0') then
-                        
-                        -- Fetch
-                        instr <= i_instr;
-                        dpc   <= fpc;
-                        
-                        -- Decode
-                        instr_pipe(cDecodeIdx).pc     <= std_logic_vector(dpc);
-                        instr_pipe(cDecodeIdx).opcode <= get_opcode(instr);
-                        instr_pipe(cDecodeIdx).rd     <= get_rd(instr);
-                        instr_pipe(cDecodeIdx).rs1    <= get_rs1(instr);
-                        instr_pipe(cDecodeIdx).rs2    <= get_rs2(instr);
-                        instr_pipe(cDecodeIdx).funct3 <= get_funct3(instr);
-                        instr_pipe(cDecodeIdx).funct7 <= get_funct7(instr);
-                        instr_pipe(cDecodeIdx).itype  <= get_itype(instr);
-                        instr_pipe(cDecodeIdx).stype  <= get_stype(instr);
-                        instr_pipe(cDecodeIdx).btype  <= get_btype(instr);
-                        instr_pipe(cDecodeIdx).utype  <= get_utype(instr);
-                        instr_pipe(cDecodeIdx).jtype  <= get_jtype(instr);
     
-                        -- Execute through Writeback
-                        for ii in cDecodeIdx to cMemAccessIdx loop
-                            if (ii + 1 = cMemAccessIdx) then
-                                if (induce_stall = '1') then
-                                    -- Force instruction to be a NOP (addi zero, zero, 0)
-                                    instr_pipe(ii + 1) <= (
-                                        pc     => x"00000000",
-                                        opcode => cAluImmedOpcode,
-                                        rs1    => "00000",
-                                        rs2    => "00000",
-                                        rd     => "00000",
-                                        funct3 => "000",
-                                        funct7 => "0000000",
-                                        itype  => x"000",
-                                        stype  => x"000",
-                                        btype  => '0' & x"000",
-                                        utype  => x"00000",
-                                        jtype  => '0' & x"00000"
-                                    );
-                                else
-                                    instr_pipe(ii + 1) <= instr_pipe(ii);
-                                end if;
-                            else
+                        if (induce_stall = '1') then
+                            instr_pipe(cWritebackIdx) <= instr_pipe(cMemAccessIdx);
+                            instr_pipe(cMemAccessIdx) <= instr_pipe(cExecuteIdx);
+                            instr_pipe(cExecuteIdx) <= (
+                                    pc     => x"00000000",
+                                    opcode => cAluImmedOpcode,
+                                    rs1    => "00000",
+                                    rs2    => "00000",
+                                    rd     => "00000",
+                                    funct3 => "000",
+                                    funct7 => "0000000",
+                                    itype  => x"000",
+                                    stype  => x"000",
+                                    btype  => '0' & x"000",
+                                    utype  => x"00000",
+                                    jtype  => '0' & x"00000"
+                            );
+                            -- Fetch
+                            instr <= i_instr;
+                            dpc   <= fpc;
+                        else
+                            -- Fetch
+                            instr <= i_instr;
+                            dpc   <= fpc;
+                            
+                            -- Decode
+                            instr_pipe(cDecodeIdx).pc     <= std_logic_vector(dpc);
+                            instr_pipe(cDecodeIdx).opcode <= get_opcode(instr);
+                            instr_pipe(cDecodeIdx).rd     <= get_rd(instr);
+                            instr_pipe(cDecodeIdx).rs1    <= get_rs1(instr);
+                            instr_pipe(cDecodeIdx).rs2    <= get_rs2(instr);
+                            instr_pipe(cDecodeIdx).funct3 <= get_funct3(instr);
+                            instr_pipe(cDecodeIdx).funct7 <= get_funct7(instr);
+                            instr_pipe(cDecodeIdx).itype  <= get_itype(instr);
+                            instr_pipe(cDecodeIdx).stype  <= get_stype(instr);
+                            instr_pipe(cDecodeIdx).btype  <= get_btype(instr);
+                            instr_pipe(cDecodeIdx).utype  <= get_utype(instr);
+                            instr_pipe(cDecodeIdx).jtype  <= get_jtype(instr);
+
+                            -- Execute through Writeback
+                            for ii in cDecodeIdx to cMemAccessIdx loop
                                 instr_pipe(ii + 1) <= instr_pipe(ii);
-                            end if;
-                        end loop;
+                            end loop;
+                        end if;
+                    else
+                        instr_pipe(cWritebackIdx) <= (
+                                pc     => x"00000000",
+                                opcode => cAluImmedOpcode,
+                                rs1    => "00000",
+                                rs2    => "00000",
+                                rd     => "00000",
+                                funct3 => "000",
+                                funct7 => "0000000",
+                                itype  => x"000",
+                                stype  => x"000",
+                                btype  => '0' & x"000",
+                                utype  => x"00000",
+                                jtype  => '0' & x"00000"
+                            );
                     end if;
                 end if;
             end if;
@@ -303,6 +328,7 @@ begin
     o_ctrl_cmn.utype      <= instr_pipe(cExecuteIdx).utype;
     o_ctrl_cmn.btype      <= instr_pipe(cExecuteIdx).btype;
     o_ctrl_cmn.stype      <= instr_pipe(cExecuteIdx).stype;
+    o_ctrl_cmn.store      <= bool2bit(instr_pipe(cExecuteIdx).opcode = cStoreOpcode);
     o_ctrl_cmn.jtype      <= instr_pipe(cExecuteIdx).jtype;
     o_ctrl_cmn.stall      <= stall;
     o_ctrl_cmn.pc         <= instr_pipe(cExecuteIdx).pc;
@@ -332,19 +358,10 @@ begin
 
     o_ctrl_alu.funct3 <= instr_pipe(cMemAccessIdx).funct3;
 
-    ResultSelect: process(i_clk)
-    begin
-        if rising_edge(i_clk) then
-            if (i_resetn = '0') then
-                alu_res_sel <= "0000";
-            else
-                alu_res_sel <= bool2bit(instr_pipe(cMemAccessIdx).funct3 = "000" or instr_pipe(cMemAccessIdx).opcode = cLoadUpperOpcode or instr_pipe(cMemAccessIdx).opcode = cAuipcOpcode) 
-                    & bool2bit(instr_pipe(cMemAccessIdx).funct3 = "100" or instr_pipe(cMemAccessIdx).funct3 = "110" or instr_pipe(cMemAccessIdx).funct3 = "111") 
-                    & bool2bit(instr_pipe(cMemAccessIdx).funct3 = "001" or instr_pipe(cMemAccessIdx).funct3 = "101")
-                    & bool2bit(instr_pipe(cMemAccessIdx).funct3 = "010" or instr_pipe(cMemAccessIdx).funct3 = "011");
-            end if;
-        end if;
-    end process ResultSelect;
+    alu_res_sel <= bool2bit(instr_pipe(cMemAccessIdx).funct3 = "000" or instr_pipe(cMemAccessIdx).opcode = cLoadUpperOpcode or instr_pipe(cMemAccessIdx).opcode = cAuipcOpcode) 
+        & bool2bit(instr_pipe(cMemAccessIdx).funct3 = "100" or instr_pipe(cMemAccessIdx).funct3 = "110" or instr_pipe(cMemAccessIdx).funct3 = "111") 
+        & bool2bit(instr_pipe(cMemAccessIdx).funct3 = "001" or instr_pipe(cMemAccessIdx).funct3 = "101")
+        & bool2bit(instr_pipe(cMemAccessIdx).funct3 = "010" or instr_pipe(cMemAccessIdx).funct3 = "011");
 
     o_ctrl_alu.res_sel <= alu_res_sel;
     o_ctrl_alu.sright  <= instr_pipe(cExecuteIdx).funct3(2);
@@ -357,6 +374,11 @@ begin
     o_ctrl_brnc.blt <= instr_pipe(cMemAccessIdx).funct3(2);
     o_ctrl_brnc.uns <= instr_pipe(cMemAccessIdx).funct3(1);
     o_ctrl_brnc.inv <= instr_pipe(cMemAccessIdx).funct3(0);
+
+    -- Memory Controls
+    o_ctrl_mem.en         <= bool2bit(instr_pipe(cMemAccessIdx).opcode = cStoreOpcode or instr_pipe(cMemAccessIdx).opcode = cLoadOpcode); 
+    o_ctrl_mem.store      <= bool2bit(instr_pipe(cMemAccessIdx).opcode = cStoreOpcode);
+    o_ctrl_mem.write_type <= instr_pipe(cMemAccessIdx).funct3;
 
     -- Jump Controls
     o_ctrl_jal.en <= bool2bit(instr_pipe(cMemAccessIdx).opcode = cJumpOpcode or

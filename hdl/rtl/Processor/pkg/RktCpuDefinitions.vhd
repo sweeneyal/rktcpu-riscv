@@ -48,8 +48,9 @@ package RktCpuDefinitions is
     end record common_controls_t;
     
     type mem_controls_t is record
-        en    : std_logic;
-        stype : std_logic;
+        en         : std_logic;
+        store      : std_logic;
+        write_type : std_logic_vector(2 downto 0);
     end record mem_controls_t;
 
     type jal_controls_t is record
