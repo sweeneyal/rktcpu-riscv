@@ -132,6 +132,7 @@ architecture rtl of ControlEngine is
     type instr_pipe_t is array (cDecodeIdx to cWritebackIdx) of decoded_instr_t;
     signal instr_pipe : instr_pipe_t;
     signal instr : std_logic_vector(31 downto 0) := x"00000000";
+    signal stalled_instr : std_logic_vector(31 downto 0) := x"00000000";
     signal pc : unsigned(31 downto 0) := x"00000000";
     signal fpc : unsigned(31 downto 0) := x"00000000";
     signal dpc : unsigned(31 downto 0) := x"00000000";
@@ -245,6 +246,14 @@ begin
 
                     o_iren <= not induce_stall;
 
+                    if (i_ivalid = '1' and induce_stall = '1') then
+                        stalled_instr <= i_instr;
+                    end if;
+
+                    if (ivalid = '0') then
+                        instr <= stalled_instr;
+                    end if;
+
                     -- If we're not stalled, then continue to process instructions.
                     if (stall_v = '0') then
     
@@ -265,9 +274,9 @@ begin
                                     utype  => x"00000",
                                     jtype  => '0' & x"00000"
                             );
-                            -- Fetch
-                            instr <= i_instr;
-                            dpc   <= fpc;
+                            -- -- Fetch
+                            -- instr <= i_instr;
+                            -- dpc   <= fpc;
                         else
                             -- Fetch
                             instr <= i_instr;
