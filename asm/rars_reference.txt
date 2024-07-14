@@ -1,0 +1,4 @@
+- I: The address of an access into instruction memory 
+- i: A 32-bit RISC-V instruction (the trace first dumps the address then the instruction)
+- L: The address of a memory load into data memory
+- S: The address of a memory store into data memory

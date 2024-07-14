@@ -123,7 +123,7 @@ begin
     -- Execute Stage
     --------------------------------------------------------------------------------------------------------------
 
-    OperandMuxes: process(ctrl_cmn, alu_res, writeback_res, reg_opA, reg_opB, ctrl_jal)
+    OperandMuxes: process(ctrl_cmn, alu_res, writeback_res, reg_opA, reg_opB, ctrl_jal, opA)
     begin
         -- Handle hazards
         if (ctrl_cmn.hzd_rs1_ex(cMemAccessIdx) = '1') then

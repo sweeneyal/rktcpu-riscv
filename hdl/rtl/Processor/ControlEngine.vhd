@@ -11,13 +11,18 @@ library rktcpu;
     use rktcpu.RiscVDefinitions.all;
 
 entity ControlEngine is
+    generic (
+        cGenerateLoggers : boolean := false
+    );
     port (
         i_clk     : in std_logic;
         i_resetn  : in std_logic;
+
         o_pc      : out std_logic_vector(31 downto 0);
         o_iren    : out std_logic;
         i_instr   : in std_logic_vector(31 downto 0);
         i_ivalid  : in std_logic;
+
         i_mvalid  : in std_logic;
         i_csrdone : in std_logic;
 
@@ -43,7 +48,9 @@ architecture rtl of ControlEngine is
         variable hazards_rs2_ma : std_logic := '0';
         variable induce_stall   : std_logic := '0';
     begin
-        if (ex_rs1 = ma_rd) then
+        if (ex_rs1 = "00000") then
+            hazards_rs1_ex(cMemAccessIdx) := '0';
+        elsif (ex_rs1 = ma_rd) then
             if (ma_opcode = cLoadOpcode) then
                 -- A hazard that requires an induced stall
                 induce_stall := '1';
@@ -62,7 +69,9 @@ architecture rtl of ControlEngine is
             end if;
         end if;
 
-        if (ex_rs1 = wb_rd) then
+        if (ex_rs1 = "00000") then
+            hazards_rs1_ex(cWritebackIdx) := '0';
+        elsif (ex_rs1 = wb_rd) then
             if (wb_opcode = cStoreOpcode or wb_opcode = cBranchOpcode) then
                 -- This is not a hazard because these do not use the rd register
                 hazards_rs1_ex(cWritebackIdx) := '0';
@@ -77,7 +86,9 @@ architecture rtl of ControlEngine is
             end if;
         end if;
 
-        if (ex_rs2 = ma_rd) then
+        if (ex_rs2 = "00000") then
+            hazards_rs2_ex(cMemAccessIdx) := '0';
+        elsif (ex_rs2 = ma_rd) then
             if (ma_opcode = cLoadOpcode) then
                 -- A hazard that requires an induced stall
                 induce_stall := '1';
@@ -95,7 +106,9 @@ architecture rtl of ControlEngine is
             end if;
         end if;
         
-        if (ex_rs2 = wb_rd) then
+        if (ex_rs2 = "00000") then
+            hazards_rs2_ex(cWritebackIdx) := '0';
+        elsif (ex_rs2 = wb_rd) then
             if (wb_opcode = cStoreOpcode or wb_opcode = cBranchOpcode) then
                 -- This is not a hazard because these do not use the rd register
                 hazards_rs2_ex(cWritebackIdx) := '0';
@@ -127,6 +140,8 @@ architecture rtl of ControlEngine is
         btype  : std_logic_vector(12 downto 0);
         utype  : std_logic_vector(19 downto 0);
         jtype  : std_logic_vector(20 downto 0);
+
+        valid : std_logic;
     end record decoded_instr_t;
 
     type instr_pipe_t is array (cDecodeIdx to cWritebackIdx) of decoded_instr_t;
@@ -160,10 +175,10 @@ begin
     begin
         if rising_edge(i_clk) then
             if (i_resetn = '0') then
-                pc <= x"00000000";
-                fpc <= x"00000000";
+                pc     <= x"00000000";
+                fpc    <= x"00000000";
                 o_iren <= '0';
-                instr <= x"00000000";
+                instr  <= x"00000000";
                 ivalid <= '0';
                 for ii in cDecodeIdx to cWritebackIdx loop
                     instr_pipe(ii) <= (
@@ -178,7 +193,8 @@ begin
                         stype  => x"000",
                         btype  => '0' & x"000",
                         utype  => x"00000",
-                        jtype  => '0' & x"00000"
+                        jtype  => '0' & x"00000",
+                        valid  => '0'
                     );
                 end loop;
             else
@@ -186,9 +202,11 @@ begin
                 if (i_pcwen = '1') then
                     pc <= unsigned(i_pc);
 
+                    fpc    <= x"00000000";
+                    dpc    <= x"00000000";
                     instr  <= x"00000000";
                     ivalid <= '0';
-                    for ii in cDecodeIdx to cWritebackIdx loop
+                    for ii in cDecodeIdx to cMemAccessIdx loop
                         instr_pipe(ii) <= (
                             pc     => x"00000000",
                             opcode => "0000000",
@@ -201,20 +219,15 @@ begin
                             stype  => x"000",
                             btype  => '0' & x"000",
                             utype  => x"00000",
-                            jtype  => '0' & x"00000"
+                            jtype  => '0' & x"00000",
+                            valid  => '0'
                         );
                     end loop;
-                    -- stall as well
+                    instr_pipe(cWritebackIdx) <= instr_pipe(cMemAccessIdx);
                 else
-                    awaiting_csrdone := bool2bit(instr_pipe(cMemAccessIdx).opcode = cEcallOpcode and 
-                        instr_pipe(cMemAccessIdx).funct3 /= "000");
-                    awaiting_mvalid := bool2bit(instr_pipe(cMemAccessIdx).opcode = cLoadOpcode);
-                    stall_v := bool2bit(ivalid = '0' or (i_mvalid = '0' and awaiting_mvalid = '1') 
-                        or (i_csrdone = '0' and awaiting_csrdone = '1'));
-                    stall <= stall_v;
-    
-                    ivalid <= i_ivalid;
-                    
+                    -- Go ahead and compute the current hazards, as well as if a stall needs to be induced.
+                    -- An induced stall is placed in the execute stage, thereby allowing the data from the
+                    -- decode stage to stall.
                     hazards := compute_hazards(
                         instr_pipe(cDecodeIdx).rs1,
                         instr_pipe(cDecodeIdx).rs2,
@@ -227,6 +240,7 @@ begin
                         instr_pipe(cMemAccessIdx).opcode
                     );
 
+                    -- Split the hazards based on internal structure to connect to all required signals.
                     hazards_rs1    <= hazards(0 to 1);
                     hazards_rs1_ma <= hazards(2);
                     hazards_rs2    <= hazards(3 to 4);
@@ -235,28 +249,49 @@ begin
                     induced_stall  <= induce_stall;
                     awaited_mvalid <= awaiting_mvalid;
 
-                    if (not ((i_mvalid = '0' and awaiting_mvalid = '1') 
-                            or (i_csrdone = '0' and awaiting_csrdone = '1')
-                            or (induce_stall = '1'))) then
-                        if (i_ivalid = '1') then
-                            pc  <= pc + 4;
-                            fpc <= pc;
-                        end if;
-                    end if;
+                    -- Check to see if we're waiting for a CSR instruction to complete.
+                    awaiting_csrdone := bool2bit(instr_pipe(cMemAccessIdx).opcode = cEcallOpcode and 
+                        instr_pipe(cMemAccessIdx).funct3 /= "000");
+                    -- Check to see if we're waiting for a Load instruction to complete.
+                    awaiting_mvalid := bool2bit(instr_pipe(cMemAccessIdx).opcode = cLoadOpcode);
 
+                    -- If we're waiting on memory, a CSR, or an instruction, or maybe just creating a stall, stall.
+                    stall_v := bool2bit(i_ivalid = '0' or induce_stall = '1' or (i_mvalid = '0' and awaiting_mvalid = '1') 
+                        or (i_csrdone = '0' and awaiting_csrdone = '1'));
+                    stall <= stall_v;
+
+                    -- In order to prevent an instruction from being dropped, lower the instruction read enable signal.
                     o_iren <= not induce_stall;
-
-                    if (i_ivalid = '1' and induce_stall = '1') then
-                        stalled_instr <= i_instr;
-                    end if;
-
-                    if (ivalid = '0') then
-                        instr <= stalled_instr;
-                    end if;
 
                     -- If we're not stalled, then continue to process instructions.
                     if (stall_v = '0') then
-    
+                        -- Fetch
+                        pc  <= pc + 4;
+                        fpc <= pc;
+
+                        instr <= i_instr;
+                        dpc   <= fpc;
+                        
+                        -- Decode
+                        instr_pipe(cDecodeIdx).pc     <= std_logic_vector(dpc);
+                        instr_pipe(cDecodeIdx).opcode <= get_opcode(instr);
+                        instr_pipe(cDecodeIdx).rd     <= get_rd(instr);
+                        instr_pipe(cDecodeIdx).rs1    <= get_rs1(instr);
+                        instr_pipe(cDecodeIdx).rs2    <= get_rs2(instr);
+                        instr_pipe(cDecodeIdx).funct3 <= get_funct3(instr);
+                        instr_pipe(cDecodeIdx).funct7 <= get_funct7(instr);
+                        instr_pipe(cDecodeIdx).itype  <= get_itype(instr);
+                        instr_pipe(cDecodeIdx).stype  <= get_stype(instr);
+                        instr_pipe(cDecodeIdx).btype  <= get_btype(instr);
+                        instr_pipe(cDecodeIdx).utype  <= get_utype(instr);
+                        instr_pipe(cDecodeIdx).jtype  <= get_jtype(instr);
+                        instr_pipe(cDecodeIdx).valid  <= '1';
+
+                        -- Execute through Writeback
+                        for ii in cDecodeIdx to cMemAccessIdx loop
+                            instr_pipe(ii + 1) <= instr_pipe(ii);
+                        end loop;
+                    else
                         if (induce_stall = '1') then
                             instr_pipe(cWritebackIdx) <= instr_pipe(cMemAccessIdx);
                             instr_pipe(cMemAccessIdx) <= instr_pipe(cExecuteIdx);
@@ -272,50 +307,29 @@ begin
                                     stype  => x"000",
                                     btype  => '0' & x"000",
                                     utype  => x"00000",
-                                    jtype  => '0' & x"00000"
+                                    jtype  => '0' & x"00000",
+                                    valid  => '0'
                             );
-                            -- -- Fetch
-                            -- instr <= i_instr;
-                            -- dpc   <= fpc;
                         else
-                            -- Fetch
-                            instr <= i_instr;
-                            dpc   <= fpc;
-                            
-                            -- Decode
-                            instr_pipe(cDecodeIdx).pc     <= std_logic_vector(dpc);
-                            instr_pipe(cDecodeIdx).opcode <= get_opcode(instr);
-                            instr_pipe(cDecodeIdx).rd     <= get_rd(instr);
-                            instr_pipe(cDecodeIdx).rs1    <= get_rs1(instr);
-                            instr_pipe(cDecodeIdx).rs2    <= get_rs2(instr);
-                            instr_pipe(cDecodeIdx).funct3 <= get_funct3(instr);
-                            instr_pipe(cDecodeIdx).funct7 <= get_funct7(instr);
-                            instr_pipe(cDecodeIdx).itype  <= get_itype(instr);
-                            instr_pipe(cDecodeIdx).stype  <= get_stype(instr);
-                            instr_pipe(cDecodeIdx).btype  <= get_btype(instr);
-                            instr_pipe(cDecodeIdx).utype  <= get_utype(instr);
-                            instr_pipe(cDecodeIdx).jtype  <= get_jtype(instr);
-
-                            -- Execute through Writeback
-                            for ii in cDecodeIdx to cMemAccessIdx loop
-                                instr_pipe(ii + 1) <= instr_pipe(ii);
-                            end loop;
+                            -- If we're stalled, writeback is already done so we don't
+                            -- need to worry about stalling it during this stage.
+                            -- Allow it to be replaced with an invalid NOP.
+                            instr_pipe(cWritebackIdx) <= (
+                                    pc     => x"00000000",
+                                    opcode => cAluImmedOpcode,
+                                    rs1    => "00000",
+                                    rs2    => "00000",
+                                    rd     => "00000",
+                                    funct3 => "000",
+                                    funct7 => "0000000",
+                                    itype  => x"000",
+                                    stype  => x"000",
+                                    btype  => '0' & x"000",
+                                    utype  => x"00000",
+                                    jtype  => '0' & x"00000",
+                                    valid  => '0'
+                                );
                         end if;
-                    else
-                        instr_pipe(cWritebackIdx) <= (
-                                pc     => x"00000000",
-                                opcode => cAluImmedOpcode,
-                                rs1    => "00000",
-                                rs2    => "00000",
-                                rd     => "00000",
-                                funct3 => "000",
-                                funct7 => "0000000",
-                                itype  => x"000",
-                                stype  => x"000",
-                                btype  => '0' & x"000",
-                                utype  => x"00000",
-                                jtype  => '0' & x"00000"
-                            );
                     end if;
                 end if;
             end if;
@@ -393,5 +407,24 @@ begin
     o_ctrl_jal.en <= bool2bit(instr_pipe(cMemAccessIdx).opcode = cJumpOpcode or
         instr_pipe(cMemAccessIdx).opcode = cJumpRegOpcode);
     o_ctrl_jal.jalr <= bool2bit(instr_pipe(cExecuteIdx).opcode = cJumpRegOpcode);
+
+    InstructionPipeChecker: process(instr_pipe)
+        variable lhpc : std_logic_vector(31 downto 0) := x"00000000";
+        variable rhpc : std_logic_vector(31 downto 0) := x"00000000";
+        variable cc   : natural := 0;
+    begin
+        report "Starting cycle " & integer'image(cc);
+        for ii in cDecodeIdx to cMemAccessIdx loop
+            if (instr_pipe(ii).valid = '1') then
+                lhpc := instr_pipe(ii).pc;
+                if (instr_pipe(ii + 1).valid = '1') then
+                    rhpc := instr_pipe(ii + 1).pc;
+                    report to_hstring(lhpc) & "," & to_hstring(rhpc);
+                    --assert unsigned(lhpc) = unsigned(rhpc) + 4;
+                end if;
+            end if;
+        end loop;
+        cc := cc + 1;
+    end process InstructionPipeChecker;
 
 end architecture rtl;
