@@ -148,6 +148,8 @@ architecture rtl of ControlEngine is
     signal instr_pipe : instr_pipe_t;
     signal instr : std_logic_vector(31 downto 0) := x"00000000";
     signal stalled_instr : std_logic_vector(31 downto 0) := x"00000000";
+    signal stalled_pc : unsigned(31 downto 0) := x"00000000";
+    signal stalled_valid : std_logic := '0';
     signal pc : unsigned(31 downto 0) := x"00000000";
     signal fpc : unsigned(31 downto 0) := x"00000000";
     signal dpc : unsigned(31 downto 0) := x"00000000";
@@ -265,13 +267,18 @@ begin
 
                     -- If we're not stalled, then continue to process instructions.
                     if (stall_v = '0') then
-                        -- Fetch
                         pc  <= pc + 4;
                         fpc <= pc;
-
-                        instr <= i_instr;
-                        dpc   <= fpc;
                         
+                        if (stalled_valid = '0') then
+                            instr <= i_instr;
+                            dpc   <= fpc;
+                        else
+                            instr         <= stalled_instr;
+                            dpc           <= stalled_pc;
+                            stalled_valid <= '0';
+                        end if;
+
                         -- Decode
                         instr_pipe(cDecodeIdx).pc     <= std_logic_vector(dpc);
                         instr_pipe(cDecodeIdx).opcode <= get_opcode(instr);
@@ -310,6 +317,17 @@ begin
                                     jtype  => '0' & x"00000",
                                     valid  => '0'
                             );
+
+                            -- If we induce a stall, we may never actually use the
+                            -- most recently returned instruction from the 
+                            -- instruction memory. This saves the last instruction
+                            -- (if there is any) to preserve for after the stall.
+                            if (i_ivalid = '1') then
+                                fpc           <= pc;
+                                stalled_instr <= i_instr;
+                                stalled_pc    <= fpc;
+                                stalled_valid <= '1';
+                            end if;
                         else
                             -- If we're stalled, writeback is already done so we don't
                             -- need to worry about stalling it during this stage.
@@ -329,6 +347,26 @@ begin
                                     jtype  => '0' & x"00000",
                                     valid  => '0'
                                 );
+                            if (instr_pipe(cMemAccessIdx).opcode = cLoadOpcode) then
+                                if (i_mvalid = '1') then
+                                    instr_pipe(cWritebackIdx) <= instr_pipe(cMemAccessIdx);
+                                    instr_pipe(cMemAccessIdx) <= (
+                                        pc     => x"00000000",
+                                        opcode => cAluImmedOpcode,
+                                        rs1    => "00000",
+                                        rs2    => "00000",
+                                        rd     => "00000",
+                                        funct3 => "000",
+                                        funct7 => "0000000",
+                                        itype  => x"000",
+                                        stype  => x"000",
+                                        btype  => '0' & x"000",
+                                        utype  => x"00000",
+                                        jtype  => '0' & x"00000",
+                                        valid  => '0'
+                                    );
+                                end if;
+                            end if;
                         end if;
                     end if;
                 end if;
