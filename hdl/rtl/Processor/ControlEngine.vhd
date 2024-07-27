@@ -163,6 +163,7 @@ architecture rtl of ControlEngine is
     signal ivalid         : std_logic := '0';
     signal induced_stall  : std_logic := '0';
     signal awaited_mvalid : std_logic := '0';
+    signal ignore_next    : std_logic := '0';
 begin
 
     o_pc <= std_logic_vector(pc);
@@ -203,7 +204,8 @@ begin
                 o_iren <= '1';
                 if (i_pcwen = '1') then
                     pc <= unsigned(i_pc);
-
+                    
+                    ignore_next <= '1';
                     fpc    <= x"00000000";
                     dpc    <= x"00000000";
                     instr  <= x"00000000";
@@ -261,6 +263,7 @@ begin
                     stall_v := bool2bit(i_ivalid = '0' or induce_stall = '1' or (i_mvalid = '0' and awaiting_mvalid = '1') 
                         or (i_csrdone = '0' and awaiting_csrdone = '1'));
                     stall <= stall_v;
+                    ignore_next <= '0';
 
                     -- In order to prevent an instruction from being dropped, lower the instruction read enable signal.
                     o_iren <= not induce_stall;
@@ -271,8 +274,10 @@ begin
                         fpc <= pc;
                         
                         if (stalled_valid = '0') then
-                            instr <= i_instr;
-                            dpc   <= fpc;
+                            if (ignore_next = '0') then
+                                instr <= i_instr;
+                                dpc   <= fpc;
+                            end if;
                         else
                             instr         <= stalled_instr;
                             dpc           <= stalled_pc;

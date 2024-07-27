@@ -42,6 +42,10 @@ tb_cfg = dict(instructions="asm/test002.hex")
 tb_ControlEngine = tb.test_bench('tb_ControlEngine')
 tb_ControlEngine.add_config(name='Test002_AddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
+tb_cfg = dict(instructions="asm/test001.hex")
+tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
+tb_RktCpuCore.add_config(name='Test001_SimpleProgram', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+
 tb_cfg = dict(instructions="asm/test002.hex")
 tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
 tb_RktCpuCore.add_config(name='Test002_AddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
