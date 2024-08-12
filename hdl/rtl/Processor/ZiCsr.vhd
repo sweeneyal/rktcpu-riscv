@@ -12,6 +12,9 @@ library rktcpu;
     use rktcpu.CsrDefinitions.all;
 
 entity ZiCsr is
+    generic (
+        cTrapBaseAddress : std_logic_vector(31 downto 0) := x"00100000"
+    );
     port (
         i_clk : in std_logic;
         i_resetn : in std_logic;
@@ -21,7 +24,14 @@ entity ZiCsr is
         o_csrr      : out std_logic_vector(31 downto 0);
         o_csrren    : out std_logic;
         o_csrdone   : out std_logic;
-        i_instret   : in std_logic
+        i_instret   : in std_logic;
+
+        i_swirpt  : in std_logic;
+        i_extirpt : in std_logic;
+        i_irpts   : in std_logic_vector(15 downto 0);
+
+        o_irptvalid : out std_logic;
+        o_irptpc    : out std_logic_vector(31 downto 0)
     );
 end entity ZiCsr;
 
@@ -49,6 +59,8 @@ architecture rtl of ZiCsr is
     signal opA : std_logic_vector(31 downto 0) := x"00000000";
     signal funct3 : std_logic_vector(2 downto 0) := "000";
     signal csraddr : std_logic_vector(11 downto 0) := x"000";
+
+    signal mip : std_logic_vector(31 downto 0) := x"00000000";
 begin
     
     o_csrdone <= bool2bit(zicsr_engine.state = ZICSR_DONE);
@@ -176,6 +188,11 @@ begin
         end if;
     end process StateMachine;
 
+    mip(31 downto 16) <= i_irpts;
+    mip(cMEI) <= i_extirpt;
+    mip(cMTI) <= bool2bit(unsigned(mcsr.mtime) >= unsigned(mcsr.mtimecmp));
+    mip(cMSI) <= i_swirpt;
+
     CsrAccess: process(i_clk)
     begin
         if rising_edge(i_clk) then
@@ -187,7 +204,7 @@ begin
                 mcsr.mimpid    <= (others => '0');
                 mcsr.mhartid   <= (others => '0');
                 mcsr.mstatus   <= (others => '0');
-                mcsr.mtvec     <= (others => '0');
+                mcsr.mtvec     <= cTrapBaseAddress(31 downto 2) & "01";
                 -- mcsr.medeleg   <= (others => '0');
                 -- mcsr.mideleg   <= (others => '0');
                 mcsr.mip       <= (others => '0');
@@ -200,7 +217,7 @@ begin
                     mcsr.mhpmevents(ii)   <= (others => '0');
                 end loop;
                 mcsr.mcounteren    <= (others => '0');
-                -- mcsr.mcountinhibit <= (others => '0');
+                mcsr.mcountinhibit <= (others => '0');
                 
                 mcsr.mscratch   <= (others => '0');
                 mcsr.mepc       <= (others => '0');
@@ -214,6 +231,16 @@ begin
                 mcsr.mtimecmp <= (others => '0');
             else
                 mcsr.mcycle <= unsigned(mcsr.mcycle) + to_unsigned(1, 64);
+                mcsr.mip    <= mcsr.mie and (mcsr.mip or mip);
+
+                -- Add logic here to:
+                -- store the captured pc into mepc
+                -- capture the current privilege level into a csr
+                -- set mcause to whatever is currently interrupting
+                -- set mtval to the fault address if it's an instruction fault
+                -- turn off mie
+                -- look up address for trap based on 4 * cause + mtvec
+                -- force PC to new address
 
                 if (zicsr_engine.en = '1') then
                     handle_accesses(
