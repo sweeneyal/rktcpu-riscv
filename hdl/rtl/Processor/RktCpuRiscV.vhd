@@ -11,7 +11,7 @@ library rktcpu;
     use rktcpu.RiscVDefinitions.all;
     use rktcpu.CsrDefinitions.all;
 
-entity RktCpuCore is
+entity RktCpuRiscV is
     generic (
         cGenerateLoggers : boolean := false
     );
@@ -35,9 +35,9 @@ entity RktCpuCore is
         i_data_rdata  : in std_logic_vector(31 downto 0);
         i_data_rvalid : in std_logic
     );
-end entity RktCpuCore;
+end entity RktCpuRiscV;
 
-architecture rtl of RktCpuCore is
+architecture rtl of RktCpuRiscV is
     signal ctrl_cmn  : common_controls_t;
     signal ctrl_alu  : alu_controls_t;
     signal ctrl_mem  : mem_controls_t;

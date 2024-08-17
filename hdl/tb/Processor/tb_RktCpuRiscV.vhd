@@ -20,14 +20,14 @@ library rktcpu;
 library tb;
     use tb.RiscVTbTools.all;
 
-entity tb_RktCpuCore is
+entity tb_RktCpuRiscV is
     generic (
         encoded_tb_cfg : string;
         runner_cfg : string
     );
-end entity tb_RktCpuCore;
+end entity tb_RktCpuRiscV;
 
-architecture tb of tb_RktCpuCore is
+architecture tb of tb_RktCpuRiscV is
     type tb_cfg_t is record
         instructions : string;
     end record tb_cfg_t;
@@ -59,7 +59,7 @@ begin
 
     CreateClock(clk=>clk, period=>5 ns);
     
-    eDut : entity rktcpu.RktCpuCore
+    eDut : entity rktcpu.RktCpuRiscV
     port map (
         i_clk    => clk,
         i_resetn => resetn,

@@ -43,32 +43,32 @@ tb_ControlEngine = tb.test_bench('tb_ControlEngine')
 tb_ControlEngine.add_config(name='Test002_AddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
 tb_cfg = dict(instructions="asm/test001.hex")
-tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
-tb_RktCpuCore.add_config(name='Test001_SimpleProgram', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
+tb_RktCpuRiscV.add_config(name='Test001_SimpleProgram', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
 tb_cfg = dict(instructions="asm/test002.hex")
-tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
-tb_RktCpuCore.add_config(name='Test002_AddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
+tb_RktCpuRiscV.add_config(name='Test002_AddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
 tb_cfg = dict(instructions="asm/test003.hex")
-tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
-tb_RktCpuCore.add_config(name='Test003_BranchAddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
+tb_RktCpuRiscV.add_config(name='Test003_BranchAddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
 tb_cfg = dict(instructions="asm/test004.hex")
-tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
-tb_RktCpuCore.add_config(name='Test004_HazardAddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
+tb_RktCpuRiscV.add_config(name='Test004_HazardAddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
 tb_cfg = dict(instructions="asm/test005.hex")
-tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
-tb_RktCpuCore.add_config(name='Test005_HazardAddRegAndImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
+tb_RktCpuRiscV.add_config(name='Test005_HazardAddRegAndImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
 tb_cfg = dict(instructions="asm/test006.hex")
-tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
-tb_RktCpuCore.add_config(name='Test006_SqrtFunction', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
+tb_RktCpuRiscV.add_config(name='Test006_SqrtFunction', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
 tb_cfg = dict(instructions="asm/test007.hex")
-tb_RktCpuCore = tb.test_bench('tb_RktCpuCore')
-tb_RktCpuCore.add_config(name='Test007_WordMemoryAccesses', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
+tb_RktCpuRiscV.add_config(name='Test007_WordMemoryAccesses', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
 # Run vunit function
 vu.add_compile_option('ghdl.a_flags', ['-frelaxed'])
