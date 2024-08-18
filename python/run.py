@@ -70,6 +70,34 @@ tb_cfg = dict(instructions="asm/test007.hex")
 tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
 tb_RktCpuRiscV.add_config(name='Test007_WordMemoryAccesses', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
+tb_cfg = dict(instructions="asm/test001.hex")
+tb_SimpleAllUp = tb.test_bench('tb_SimpleAllUp')
+tb_SimpleAllUp.add_config(name='Test001_SimpleProgram', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+
+tb_cfg = dict(instructions="asm/test002.hex")
+tb_SimpleAllUp = tb.test_bench('tb_SimpleAllUp')
+tb_SimpleAllUp.add_config(name='Test002_AddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+
+tb_cfg = dict(instructions="asm/test003.hex")
+tb_SimpleAllUp = tb.test_bench('tb_SimpleAllUp')
+tb_SimpleAllUp.add_config(name='Test003_BranchAddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+
+tb_cfg = dict(instructions="asm/test004.hex")
+tb_SimpleAllUp = tb.test_bench('tb_SimpleAllUp')
+tb_SimpleAllUp.add_config(name='Test004_HazardAddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+
+tb_cfg = dict(instructions="asm/test005.hex")
+tb_SimpleAllUp = tb.test_bench('tb_SimpleAllUp')
+tb_SimpleAllUp.add_config(name='Test005_HazardAddRegAndImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+
+tb_cfg = dict(instructions="asm/test006.hex")
+tb_SimpleAllUp = tb.test_bench('tb_SimpleAllUp')
+tb_SimpleAllUp.add_config(name='Test006_SqrtFunction', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+
+tb_cfg = dict(instructions="asm/test007.hex")
+tb_SimpleAllUp = tb.test_bench('tb_SimpleAllUp')
+tb_SimpleAllUp.add_config(name='Test007_WordMemoryAccesses', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
+
 # Run vunit function
 vu.add_compile_option('ghdl.a_flags', ['-frelaxed'])
 vu.set_sim_option('ghdl.elab_flags', ['-frelaxed'])

@@ -46,13 +46,13 @@ begin
         ) port map (
             i_clk => i_clk,
     
-            i_addra  => i_addra,
+            i_addra  => i_addra(cAddressWidth_b - 1 downto 2),
             i_ena    => i_ena,
             i_wena   => i_wena(g_ii),
             i_wdataa => i_wdataa(8 * (g_ii + 1) - 1 downto 8 * g_ii),
             o_rdataa => o_rdataa(8 * (g_ii + 1) - 1 downto 8 * g_ii),
     
-            i_addrb  => i_addrb,
+            i_addrb  => i_addrb(cAddressWidth_b - 1 downto 2),
             i_enb    => i_enb,
             i_wenb   => i_wenb(g_ii),
             i_wdatab => i_wdatab(8 * (g_ii + 1) - 1 downto 8 * g_ii),

@@ -29,7 +29,7 @@ begin
     
     eRom : entity rktcpu.BramRom
     generic map (
-        cAddressWidth_b => 32,
+        cAddressWidth_b => 30,
         cMaxAddress     => cMaxAddress / 4,
         cDataWidth_b    => 32,
         cInitPath       => cInstructionHexPath
