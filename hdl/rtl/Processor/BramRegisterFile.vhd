@@ -32,9 +32,9 @@ begin
     
     eRegisterCopy0 : entity rktcpu.DualPortBram
     generic map (
-        cAddressWidth => 5,
-        cMaxAddress   => 32,
-        cDataWidth    => 32
+        cAddressWidth_b => 5,
+        cMaxAddress     => 32,
+        cDataWidth_b    => 32
     ) port map (
         i_clk => i_clk,
 
@@ -53,9 +53,9 @@ begin
 
     eRegisterCopy1 : entity rktcpu.DualPortBram
     generic map (
-        cAddressWidth => 5,
-        cMaxAddress   => 32,
-        cDataWidth    => 32
+        cAddressWidth_b => 5,
+        cMaxAddress     => 32,
+        cDataWidth_b    => 32
     ) port map (
         i_clk => i_clk,
 

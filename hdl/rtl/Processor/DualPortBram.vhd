@@ -8,24 +8,24 @@ library universal;
 
 entity DualPortBram is
     generic (
-        cAddressWidth : natural := 30;
-        cMaxAddress   : natural := 4096;
-        cDataWidth    : natural := 32
+        cAddressWidth_b : natural := 30;
+        cMaxAddress     : natural := 4096;
+        cDataWidth_b    : natural := 32
     );
     port (
         i_clk : in std_logic;
 
-        i_addra  : in std_logic_vector(cAddressWidth - 1 downto 0);
+        i_addra  : in std_logic_vector(cAddressWidth_b - 1 downto 0);
         i_ena    : in std_logic;
         i_wena   : in std_logic;
-        i_wdataa : in std_logic_vector(cDataWidth - 1 downto 0);
-        o_rdataa : out std_logic_vector(cDataWidth - 1 downto 0);
+        i_wdataa : in std_logic_vector(cDataWidth_b - 1 downto 0);
+        o_rdataa : out std_logic_vector(cDataWidth_b - 1 downto 0);
 
-        i_addrb  : in std_logic_vector(cAddressWidth - 1 downto 0);
+        i_addrb  : in std_logic_vector(cAddressWidth_b - 1 downto 0);
         i_enb    : in std_logic;
         i_wenb   : in std_logic;
-        i_wdatab : in std_logic_vector(cDataWidth - 1 downto 0);
-        o_rdatab : out std_logic_vector(cDataWidth - 1 downto 0)
+        i_wdatab : in std_logic_vector(cDataWidth_b - 1 downto 0);
+        o_rdatab : out std_logic_vector(cDataWidth_b - 1 downto 0)
     );
 end entity DualPortBram;
 
@@ -39,8 +39,8 @@ architecture rtl of DualPortBram is
         return slm;
     end function;
 
-    shared variable ram : std_logic_matrix_t(0 to cMaxAddress - 1)(cDataWidth - 1 downto 0) 
-        := initialize(cMaxAddress, cDataWidth);
+    shared variable ram : std_logic_matrix_t(0 to cMaxAddress - 1)(cDataWidth_b - 1 downto 0) 
+        := initialize(cMaxAddress, cDataWidth_b);
 begin
     
     RamAddrAControl: process(i_clk)
