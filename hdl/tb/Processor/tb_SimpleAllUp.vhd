@@ -51,6 +51,7 @@ architecture tb of tb_SimpleAllUp is
 
     signal data_addr   : std_logic_vector(31 downto 0) := x"00000000";
     signal data_ren    : std_logic := '0';
+    signal data_ren_idxed : std_logic := '0';
     signal data_wen    : std_logic_vector(3 downto 0) := "0000";
     signal data_wdata  : std_logic_vector(31 downto 0) := x"00000000";
     signal data_rdata  : std_logic_vector(31 downto 0) := x"00000000";
@@ -95,16 +96,18 @@ begin
         o_instr_rvalid => instr_rvalid
     );
 
+    data_ren_idxed <= data_ren and bool2bit(data_addr(31 downto 13) = x"00001");
+
     eDmem : entity rktcpu.ByteAddrBram
     generic map (
-        cAddressWidth_b => 32,
-        cMaxAddress     => 16384,
+        cAddressWidth_b => 13,
+        cMaxAddress     => 1024,
         cWordWidth_B    => 4
     ) port map (
         i_clk => clk,
 
-        i_addra   => data_addr,
-        i_ena     => data_ren,
+        i_addra   => data_addr(12 downto 0),
+        i_ena     => data_ren_idxed,
         i_wena    => data_wen,
         i_wdataa  => data_wdata,
         o_rdataa  => data_rdata,
