@@ -33,7 +33,10 @@ entity RktCpuRiscV is
         o_data_wen    : out std_logic_vector(3 downto 0);
         o_data_wdata  : out std_logic_vector(31 downto 0);
         i_data_rdata  : in std_logic_vector(31 downto 0);
-        i_data_rvalid : in std_logic
+        i_data_rvalid : in std_logic;
+
+        i_extirpt : in std_logic;
+        i_irpts   : in std_logic_vector(15 downto 0)
     );
 end entity RktCpuRiscV;
 
@@ -73,6 +76,9 @@ architecture rtl of RktCpuRiscV is
     signal jump_pjpc_ma  : std_logic_vector(31 downto 0) := x"00000000";
     signal lsu_rdata     : std_logic_vector(31 downto 0) := x"00000000";
     signal writeback_res : std_logic_vector(31 downto 0) := x"00000000";
+
+    signal irptpc    : std_logic_vector(31 downto 0) := x"00000000";
+    signal irptvalid : std_logic := '0';
 begin
 
     -------------------------------------------------------------------------------------------------
@@ -250,16 +256,18 @@ begin
         end if;
     end process BranchLogic;
 
-    NxtPcMux: process(branch_wen, jump_addr, branch_addr)
+    NxtPcMux: process(branch_wen, irptvalid, irptpc, jump_addr, branch_addr)
     begin
         if (branch_wen = '1') then
             nxtpc <= branch_addr;
+        elsif (irptvalid = '1') then
+            nxtpc <= irptpc;
         else
             nxtpc <= jump_addr;
         end if;
     end process NxtPcMux;
 
-    pcwen <= branch_wen or ctrl_jal.en;
+    pcwen <= branch_wen or ctrl_jal.en or irptvalid;
 
     o_data_ren <= ctrl_mem.en and not i_data_rvalid;
     Aligner: process(ctrl_mem, memaccess_opB, lsu_addr)
@@ -312,7 +320,14 @@ begin
         o_csrr      => csrr,
         o_csrren    => open,
         o_csrdone   => csrdone,
-        i_instret   => instret
+        i_instret   => instret,
+
+        i_swirpt  => '0',
+        i_extirpt => i_extirpt,
+        i_irpts   => i_irpts,
+
+        o_irptvalid => irptvalid,
+        o_irptpc    => irptpc
     );
 
     o_data_addr <= lsu_addr;
