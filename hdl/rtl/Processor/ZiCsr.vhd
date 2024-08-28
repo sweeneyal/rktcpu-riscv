@@ -61,6 +61,17 @@ architecture rtl of ZiCsr is
     signal csraddr : std_logic_vector(11 downto 0) := x"000";
 
     signal mip : std_logic_vector(31 downto 0) := x"00000000";
+    signal preserved_mie : std_logic_vector(31 downto 0) := x"00000000";
+
+    function get_highest_priority_irpt(pending : std_logic_vector) return std_logic_vector is
+    begin
+        for ii in 0 to pending'length - 1 loop
+            if (pending(ii) = '1') then
+                return to_slv(ii, 31);
+            end if;
+        end loop;
+        return to_slv(0, 31);
+    end function;
 begin
     
     o_csrdone <= bool2bit(zicsr_engine.state = ZICSR_DONE);
@@ -193,6 +204,8 @@ begin
     mip(cMTI) <= bool2bit(unsigned(mcsr.mtime) >= unsigned(mcsr.mtimecmp));
     mip(cMSI) <= i_swirpt;
 
+    o_irptvalid <= bool2bit((mcsr.mip and mcsr.mie) /= x"00000000" and mcsr.mstatus(cMIE) = '1');
+
     CsrAccess: process(i_clk)
     begin
         if rising_edge(i_clk) then
@@ -230,8 +243,16 @@ begin
                 mcsr.mtime    <= (others => '0');
                 mcsr.mtimecmp <= (others => '0');
             else
-                mcsr.mcycle <= unsigned(mcsr.mcycle) + to_unsigned(1, 64);
-                mcsr.mip    <= mcsr.mie and (mcsr.mip or mip);
+                mcsr.mcycle     <= unsigned(mcsr.mcycle) + to_unsigned(1, 64);
+                mcsr.mip        <= mcsr.mie and (mcsr.mip or mip);
+                mcsr.mcause(31) <= bool2bit(mcsr.mip /= x"00000000");
+                mcsr.mcause(30 downto 0) <= get_highest_priority_irpt(mcsr.mip);
+
+                -- TODO: Finish implementing this. This will keep the MIE bit cleared
+                if (mcsr.mip /= x"00000000" and mcsr.mstatus(cMIE) = '1') then
+                    mcsr.mstatus(cMIE)  <= '0';
+                    mcsr.mstatus(cMPIE) <= mcsr.mstatus(cMIE);
+                end if;
 
                 -- Add logic here to:
                 -- store the captured pc into mepc
