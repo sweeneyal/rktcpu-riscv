@@ -82,7 +82,10 @@ begin
         o_data_wen    => data_wen,
         o_data_wdata  => data_wdata,
         i_data_rdata  => data_rdata,
-        i_data_rvalid => data_rvalid
+        i_data_rvalid => data_rvalid,
+
+        i_extirpt => '0',
+        i_irpts   => x"0000"
     );
 
     eImem : entity rktcpu.InstructionRom

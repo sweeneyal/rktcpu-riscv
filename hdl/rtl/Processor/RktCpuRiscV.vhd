@@ -13,7 +13,8 @@ library rktcpu;
 
 entity RktCpuRiscV is
     generic (
-        cGenerateLoggers : boolean := false
+        cGenerateLoggers : boolean := false;
+        cLoggerPath      : string := ""
     );
     port (
         i_clk    : in std_logic;
@@ -47,6 +48,7 @@ architecture rtl of RktCpuRiscV is
     signal ctrl_brnc : branch_controls_t;
     signal ctrl_zcsr : zicsr_controls_t;
     signal ctrl_jal  : jal_controls_t;
+    signal ctrl_dbg  : dbg_controls_t;
 
     signal nxtpc      : std_logic_vector(31 downto 0) := x"00000000";
     signal pcwen      : std_logic := '0';
@@ -79,6 +81,12 @@ architecture rtl of RktCpuRiscV is
 
     signal irptpc    : std_logic_vector(31 downto 0) := x"00000000";
     signal irptvalid : std_logic := '0';
+
+    signal mepc       : std_logic_vector(31 downto 0) := x"00000000";
+    signal mepcvalid  : std_logic := '0';
+    signal data_ren   : std_logic := '0';
+    signal data_wen   : std_logic_vector(3 downto 0) := "0000";
+    signal data_wdata : std_logic_vector(31 downto 0) := x"00000000";
 begin
 
     -------------------------------------------------------------------------------------------------
@@ -102,9 +110,11 @@ begin
         o_ctrl_brnc => ctrl_brnc,
         o_ctrl_zcsr => ctrl_zcsr,
         o_ctrl_jal  => ctrl_jal,
+        o_ctrl_dbg  => ctrl_dbg,
 
-        i_pc    => nxtpc, 
-        i_pcwen => pcwen 
+        i_pc      => nxtpc, 
+        i_pcwen   => pcwen,
+        i_irvalid => irptvalid
     );
 
 
@@ -256,10 +266,12 @@ begin
         end if;
     end process BranchLogic;
 
-    NxtPcMux: process(branch_wen, irptvalid, irptpc, jump_addr, branch_addr)
+    NxtPcMux: process(branch_wen, mepcvalid, irptvalid, irptpc, mepc, jump_addr, branch_addr)
     begin
         if (branch_wen = '1') then
             nxtpc <= branch_addr;
+        elsif (mepcvalid = '1') then
+            nxtpc <= mepc;
         elsif (irptvalid = '1') then
             nxtpc <= irptpc;
         else
@@ -267,46 +279,51 @@ begin
         end if;
     end process NxtPcMux;
 
-    pcwen <= branch_wen or ctrl_jal.en or irptvalid;
+    pcwen <= branch_wen or ctrl_jal.en or mepcvalid;
 
-    o_data_ren <= ctrl_mem.en and not i_data_rvalid;
     Aligner: process(ctrl_mem, memaccess_opB, lsu_addr)
     begin
         case lsu_addr(1 downto 0) is
             when "00" =>
-                o_data_wdata <= memaccess_opB;
+                data_wdata <= memaccess_opB;
                 if (ctrl_mem.write_type = "000") then
-                    o_data_wen <= "000" & ctrl_mem.store;
+                    data_wen <= "000" & ctrl_mem.store;
                 elsif (ctrl_mem.write_type = "001") then
-                    o_data_wen <= "00" & ctrl_mem.store & ctrl_mem.store;
+                    data_wen <= "00" & ctrl_mem.store & ctrl_mem.store;
                 else
-                    o_data_wen <= ctrl_mem.store & ctrl_mem.store &
+                    data_wen <= ctrl_mem.store & ctrl_mem.store &
                         ctrl_mem.store & ctrl_mem.store;
                 end if;
             -- It is assumed that if we're writing and the address is misaligned, we are not writing
             -- more than two bytes maximum.
             when "01" =>
-                o_data_wdata <= x"00" & memaccess_opB(15 downto 0) & x"00";
+                data_wdata <= x"00" & memaccess_opB(15 downto 0) & x"00";
                 if (ctrl_mem.write_type = "000") then
-                    o_data_wen <= "00" & ctrl_mem.store & "0";
+                    data_wen <= "00" & ctrl_mem.store & "0";
                 else
-                    o_data_wen <= "0" & ctrl_mem.store & ctrl_mem.store & "0";
+                    data_wen <= "0" & ctrl_mem.store & ctrl_mem.store & "0";
                 end if;
             when "10" =>
-                o_data_wdata <= memaccess_opB(15 downto 0) & x"0000";
+                data_wdata <= memaccess_opB(15 downto 0) & x"0000";
                 if (ctrl_mem.write_type = "000") then
-                    o_data_wen <= "0" & ctrl_mem.store & "00";
+                    data_wen <= "0" & ctrl_mem.store & "00";
                 else
-                    o_data_wen <= ctrl_mem.store & ctrl_mem.store & "00";
+                    data_wen <= ctrl_mem.store & ctrl_mem.store & "00";
                 end if;
             when "11" =>
-                o_data_wen   <= ctrl_mem.store & "000";
-                o_data_wdata <= memaccess_opB(7 downto 0) & x"000000";
+                data_wen   <= ctrl_mem.store & "000";
+                data_wdata <= memaccess_opB(7 downto 0) & x"000000";
             when others =>
-                o_data_wen   <= "0000";
-                o_data_wdata <= memaccess_opB;
+                data_wen   <= "0000";
+                data_wdata <= memaccess_opB;
         end case;
     end process Aligner;
+
+    data_ren     <= ctrl_mem.en and not i_data_rvalid;
+    o_data_ren   <= data_ren;
+    o_data_wen   <= data_wen;
+    o_data_wdata <= data_wdata;
+    o_data_addr  <= lsu_addr;
 
     instret <= not ctrl_cmn.stall;
 
@@ -327,10 +344,11 @@ begin
         i_irpts   => i_irpts,
 
         o_irptvalid => irptvalid,
-        o_irptpc    => irptpc
-    );
+        o_irptpc    => irptpc,
 
-    o_data_addr <= lsu_addr;
+        o_mepc      => mepc,
+        o_mepcvalid => mepcvalid
+    );
 
     LsuData: process(i_clk)
     begin
@@ -385,5 +403,25 @@ begin
     --------------------------------------------------------------------------------------------------------------
     -- Checks to verify implementation.
     --------------------------------------------------------------------------------------------------------------
+
+    gLogger: if cGenerateLoggers generate
+        eLogger : entity rktcpu.Logger
+        generic map (
+            cLoggerPath => cLoggerPath
+        ) port map (
+            i_clk      => i_clk,
+            i_resetn   => i_resetn,
+            i_pc       => ctrl_dbg.pc,
+            i_rd       => ctrl_cmn.rd,
+            i_rdwen    => ctrl_cmn.rdwen,
+            i_wbresult => writeback_res,
+            i_mapc     => ctrl_dbg.mapc,
+            i_addr     => lsu_addr,
+            i_ren      => data_ren,
+            i_wen      => data_wen,
+            i_wdata    => data_wdata,
+            i_valid    => ctrl_dbg.valid
+        );
+    end generate gLogger;
     
 end architecture rtl;

@@ -79,8 +79,9 @@ begin
         o_ctrl_zcsr => ctrl_zcsr,
         o_ctrl_jal  => ctrl_jal,
 
-        i_pc    => i_pc, 
-        i_pcwen => i_pcwen 
+        i_pc      => i_pc, 
+        i_pcwen   => i_pcwen,
+        i_irvalid => '1'
     );
 
     eImem : entity tb.InstructionMemory

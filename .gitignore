@@ -180,3 +180,5 @@ scratch
 *.str
 *.jou
 .Xil
+
+logs
