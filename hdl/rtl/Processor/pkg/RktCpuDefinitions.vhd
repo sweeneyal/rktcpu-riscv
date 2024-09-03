@@ -68,9 +68,19 @@ package RktCpuDefinitions is
     type zicsr_controls_t is record
         en     : std_logic;
         rs1    : std_logic_vector(4 downto 0);
+        rs2    : std_logic_vector(4 downto 0);
         rd     : std_logic_vector(4 downto 0);
         funct3 : std_logic_vector(2 downto 0);
         itype  : std_logic_vector(11 downto 0);
+        mret   : std_logic;
+        sret   : std_logic;
+        pc     : std_logic_vector(31 downto 0);
     end record zicsr_controls_t;
+
+    type dbg_controls_t is record
+        pc       : std_logic_vector(31 downto 0);
+        mapc     : std_logic_vector(31 downto 0);
+        valid    : std_logic;
+    end record dbg_controls_t;
     
 end package RktCpuDefinitions;

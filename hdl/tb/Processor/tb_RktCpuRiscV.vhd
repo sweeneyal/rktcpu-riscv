@@ -30,11 +30,12 @@ end entity tb_RktCpuRiscV;
 architecture tb of tb_RktCpuRiscV is
     type tb_cfg_t is record
         instructions : string;
+        logpath      : string;
     end record tb_cfg_t;
 
     impure function decode (enc_tb_cfg : string) return tb_cfg_t is
     begin
-        return (instructions=>get(enc_tb_cfg, "instructions"));
+        return (instructions=>get(enc_tb_cfg, "instructions"), logpath=>get(enc_tb_cfg, "logpath"));
     end function;
 
     constant tb_cfg : tb_cfg_t := decode(encoded_tb_cfg);
@@ -60,7 +61,10 @@ begin
     CreateClock(clk=>clk, period=>5 ns);
     
     eDut : entity rktcpu.RktCpuRiscV
-    port map (
+    generic map (
+        cGenerateLoggers => true,
+        cLoggerPath      => tb_cfg.logpath
+    ) port map (
         i_clk    => clk,
         i_resetn => resetn,
 
@@ -78,7 +82,10 @@ begin
         o_data_wen    => data_wen,
         o_data_wdata  => data_wdata,
         i_data_rdata  => data_rdata,
-        i_data_rvalid => data_rvalid
+        i_data_rvalid => data_rvalid,
+
+        i_extirpt => '0',
+        i_irpts   => x"0000"
     );
 
     eImem : entity tb.InstructionMemory

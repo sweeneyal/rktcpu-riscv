@@ -32,9 +32,11 @@ entity ControlEngine is
         o_ctrl_brnc : out branch_controls_t;
         o_ctrl_zcsr : out zicsr_controls_t;
         o_ctrl_jal  : out jal_controls_t;
+        o_ctrl_dbg  : out dbg_controls_t;
 
-        i_pc    : in std_logic_vector(31 downto 0);
-        i_pcwen : in std_logic
+        i_pc      : in std_logic_vector(31 downto 0);
+        i_pcwen   : in std_logic;
+        i_irvalid : in std_logic
     );
 end entity ControlEngine;
 
@@ -164,6 +166,7 @@ architecture rtl of ControlEngine is
     signal induced_stall  : std_logic := '0';
     signal awaited_mvalid : std_logic := '0';
     signal ignore_next    : std_logic := '0';
+    signal valid_pipe     : std_logic := '0';
 begin
 
     o_pc <= std_logic_vector(pc);
@@ -202,6 +205,10 @@ begin
                 end loop;
             else
                 o_iren <= '1';
+                -- This logic handles mret, jumps, branches, and interrupts. The assumption
+                -- with interrupts is that we start back over with whatever instruction was in 
+                -- cMemAccessIdx when we call mret, which means none of the following instructions
+                -- completed anyway.
                 if (i_pcwen = '1') then
                     pc <= unsigned(i_pc);
                     
@@ -210,24 +217,50 @@ begin
                     dpc    <= x"00000000";
                     instr  <= x"00000000";
                     ivalid <= '0';
-                    for ii in cDecodeIdx to cMemAccessIdx loop
-                        instr_pipe(ii) <= (
-                            pc     => x"00000000",
-                            opcode => "0000000",
-                            rs1    => "00000",
-                            rs2    => "00000",
-                            rd     => "00000",
-                            funct3 => "000",
-                            funct7 => "0000000",
-                            itype  => x"000",
-                            stype  => x"000",
-                            btype  => '0' & x"000",
-                            utype  => x"00000",
-                            jtype  => '0' & x"00000",
-                            valid  => '0'
-                        );
-                    end loop;
-                    instr_pipe(cWritebackIdx) <= instr_pipe(cMemAccessIdx);
+
+                    valid_pipe <= '0';
+                    
+                    -- If an interrupt occurred, then we need to empty out every pipeline stage.
+                    -- If it's a regular jump, then we only need to empty out the pipeline stages
+                    -- that aren't the jump instruction.
+                    if (i_irvalid = '1') then
+                        for ii in cDecodeIdx to cWritebackIdx loop
+                            instr_pipe(ii) <= (
+                                pc     => x"00000000",
+                                opcode => "0000000",
+                                rs1    => "00000",
+                                rs2    => "00000",
+                                rd     => "00000",
+                                funct3 => "000",
+                                funct7 => "0000000",
+                                itype  => x"000",
+                                stype  => x"000",
+                                btype  => '0' & x"000",
+                                utype  => x"00000",
+                                jtype  => '0' & x"00000",
+                                valid  => '0'
+                            );
+                        end loop;
+                    else
+                        for ii in cDecodeIdx to cMemAccessIdx loop
+                            instr_pipe(ii) <= (
+                                pc     => x"00000000",
+                                opcode => "0000000",
+                                rs1    => "00000",
+                                rs2    => "00000",
+                                rd     => "00000",
+                                funct3 => "000",
+                                funct7 => "0000000",
+                                itype  => x"000",
+                                stype  => x"000",
+                                btype  => '0' & x"000",
+                                utype  => x"00000",
+                                jtype  => '0' & x"00000",
+                                valid  => '0'
+                            );
+                        end loop;
+                        instr_pipe(cWritebackIdx) <= instr_pipe(cMemAccessIdx);
+                    end if;
                 else
                     -- Go ahead and compute the current hazards, as well as if a stall needs to be induced.
                     -- An induced stall is placed in the execute stage, thereby allowing the data from the
@@ -284,6 +317,8 @@ begin
                             stalled_valid <= '0';
                         end if;
 
+                        valid_pipe <= '1';
+
                         -- Decode
                         instr_pipe(cDecodeIdx).pc     <= std_logic_vector(dpc);
                         instr_pipe(cDecodeIdx).opcode <= get_opcode(instr);
@@ -297,13 +332,14 @@ begin
                         instr_pipe(cDecodeIdx).btype  <= get_btype(instr);
                         instr_pipe(cDecodeIdx).utype  <= get_utype(instr);
                         instr_pipe(cDecodeIdx).jtype  <= get_jtype(instr);
-                        instr_pipe(cDecodeIdx).valid  <= '1';
+                        instr_pipe(cDecodeIdx).valid  <= valid_pipe or stalled_valid;
 
                         -- Execute through Writeback
                         for ii in cDecodeIdx to cMemAccessIdx loop
                             instr_pipe(ii + 1) <= instr_pipe(ii);
                         end loop;
                     else
+                        valid_pipe <= '0';
                         if (induce_stall = '1') then
                             instr_pipe(cWritebackIdx) <= instr_pipe(cMemAccessIdx);
                             instr_pipe(cMemAccessIdx) <= instr_pipe(cExecuteIdx);
@@ -450,6 +486,24 @@ begin
     o_ctrl_jal.en <= bool2bit(instr_pipe(cMemAccessIdx).opcode = cJumpOpcode or
         instr_pipe(cMemAccessIdx).opcode = cJumpRegOpcode);
     o_ctrl_jal.jalr <= bool2bit(instr_pipe(cExecuteIdx).opcode = cJumpRegOpcode);
+
+    -- Zicsr Controls
+    o_ctrl_zcsr.en <= bool2bit(instr_pipe(cMemAccessIdx).opcode = cEcallOpcode and 
+        instr_pipe(cMemAccessIdx).funct3 /= "000" and instr_pipe(cMemAccessIdx).funct3 /= "100");
+    o_ctrl_zcsr.funct3 <= instr_pipe(cMemAccessIdx).funct3;
+    o_ctrl_zcsr.itype  <= instr_pipe(cMemAccessIdx).itype;
+    o_ctrl_zcsr.rs1    <= instr_pipe(cMemAccessIdx).rs1;
+    o_ctrl_zcsr.rs2    <= instr_pipe(cMemAccessIdx).rs2;
+    o_ctrl_zcsr.rd     <= instr_pipe(cMemAccessIdx).rd;
+    o_ctrl_zcsr.mret   <= bool2bit(instr_pipe(cMemAccessIdx).opcode = cEcallOpcode and 
+        instr_pipe(cMemAccessIdx).funct3 = "000" and instr_pipe(cMemAccessIdx).rs1 = "00000" and
+        instr_pipe(cMemAccessIdx).rs2 = "00010" and instr_pipe(cMemAccessIdx).rd = "00000" and 
+        instr_pipe(cMemAccessIdx).funct7 = "0011000");
+    o_ctrl_zcsr.pc <= instr_pipe(cMemAccessIdx).pc;
+
+    o_ctrl_dbg.pc    <= instr_pipe(cWritebackIdx).pc;
+    o_ctrl_dbg.mapc  <= instr_pipe(cMemAccessIdx).pc;
+    o_ctrl_dbg.valid <= instr_pipe(cWritebackIdx).valid;
 
     InstructionPipeChecker: process(instr_pipe)
         variable lhpc : std_logic_vector(31 downto 0) := x"00000000";

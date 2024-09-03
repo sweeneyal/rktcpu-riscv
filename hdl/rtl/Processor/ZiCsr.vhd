@@ -31,7 +31,10 @@ entity ZiCsr is
         i_irpts   : in std_logic_vector(15 downto 0);
 
         o_irptvalid : out std_logic;
-        o_irptpc    : out std_logic_vector(31 downto 0)
+        o_irptpc    : out std_logic_vector(31 downto 0);
+
+        o_mepc      : out std_logic_vector(31 downto 0);
+        o_mepcvalid : out std_logic
     );
 end entity ZiCsr;
 
@@ -61,7 +64,8 @@ architecture rtl of ZiCsr is
     signal csraddr : std_logic_vector(11 downto 0) := x"000";
 
     signal mip : std_logic_vector(31 downto 0) := x"00000000";
-    signal preserved_mie : std_logic_vector(31 downto 0) := x"00000000";
+
+    signal irptvalid : std_logic := '0';
 
     function get_highest_priority_irpt(pending : std_logic_vector) return std_logic_vector is
     begin
@@ -204,7 +208,8 @@ begin
     mip(cMTI) <= bool2bit(unsigned(mcsr.mtime) >= unsigned(mcsr.mtimecmp));
     mip(cMSI) <= i_swirpt;
 
-    o_irptvalid <= bool2bit((mcsr.mip and mcsr.mie) /= x"00000000" and mcsr.mstatus(cMIE) = '1');
+    o_mepc      <= mcsr.mepc;
+    o_mepcvalid <= i_ctrl_zcsr.mret;
 
     CsrAccess: process(i_clk)
     begin
@@ -217,7 +222,7 @@ begin
                 mcsr.mimpid    <= (others => '0');
                 mcsr.mhartid   <= (others => '0');
                 mcsr.mstatus   <= (others => '0');
-                mcsr.mtvec     <= cTrapBaseAddress(31 downto 2) & "01";
+                mcsr.mtvec     <= cTrapBaseAddress(31 downto 2) & "00";
                 -- mcsr.medeleg   <= (others => '0');
                 -- mcsr.mideleg   <= (others => '0');
                 mcsr.mip       <= (others => '0');
@@ -248,10 +253,21 @@ begin
                 mcsr.mcause(31) <= bool2bit(mcsr.mip /= x"00000000");
                 mcsr.mcause(30 downto 0) <= get_highest_priority_irpt(mcsr.mip);
 
-                -- TODO: Finish implementing this. This will keep the MIE bit cleared
-                if (mcsr.mip /= x"00000000" and mcsr.mstatus(cMIE) = '1') then
+                -- Stall this a few cycles until the irptpc is correct. This is fine, 
+                -- since cycles of delay before the interrupt takes hold just means more instructions
+                -- will be completed.
+                irptvalid <= bool2bit((mcsr.mip and mcsr.mie) /= x"00000000" and 
+                    mcsr.mstatus(cMIE) = '1');
+                o_irptvalid <= irptvalid;
+                o_irptpc    <= std_logic_vector(unsigned(mcsr.mtvec) + (unsigned(mcsr.mcause(29 downto 0)) & "00"));
+
+                if (irptvalid = '1') then
                     mcsr.mstatus(cMIE)  <= '0';
                     mcsr.mstatus(cMPIE) <= mcsr.mstatus(cMIE);
+                    mcsr.mepc           <= i_ctrl_zcsr.pc;
+                elsif (i_ctrl_zcsr.mret = '1') then
+                    mcsr.mstatus(cMIE)  <= mcsr.mstatus(cMPIE);
+                    mcsr.mstatus(cMPIE) <= '1';
                 end if;
 
                 -- Add logic here to:
