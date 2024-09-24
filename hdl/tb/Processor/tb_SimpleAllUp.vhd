@@ -59,6 +59,7 @@ architecture tb of tb_SimpleAllUp is
 
     signal gpio_ren_idxed : std_logic := '0';
     signal gpio           : std_logic_vector(31 downto 0) := x"00000000";
+    signal gpio_rdata     : std_logic_vector(31 downto 0) := x"00000000";
 begin
 
     CreateClock(clk=>clk, period=>5 ns);
@@ -136,7 +137,7 @@ begin
         i_ren    => gpio_ren_idxed,
         i_wen    => data_wen,
         i_wdata  => data_wdata,
-        o_rdata  => data_rdata,
+        o_rdata  => gpio_rdata,
         o_gpio   => gpio
     );
 

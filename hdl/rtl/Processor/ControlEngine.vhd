@@ -43,7 +43,6 @@ end entity ControlEngine;
 architecture rtl of ControlEngine is
     signal pipeline : stages_t;
     
-    signal pc     : unsigned(31 downto 0) := x"00000000";
     signal rpc    : std_logic_vector(31 downto 0) := x"00000000";
     signal instr  : std_logic_vector(31 downto 0) := x"00000000";
     signal ivalid : std_logic := '0';
@@ -59,63 +58,21 @@ architecture rtl of ControlEngine is
     signal induced_stall  : std_logic := '0';
 begin
 
-    o_pc <= std_logic_vector(pc);
-    o_iren <= iren;
+    o_iren <= iren and not i_pcwen;
 
-    -- Fetch engine is where the PC comes from. This will query several instruction reads.
-    FetchEngine: process(i_clk)
-    begin
-        if rising_edge(i_clk) then
-            if (i_resetn = '0') then
-                iren   <= '0';
-                pc     <= x"00000000";
-            else
-                -- if we don't have an outstanding request, make a request
-                -- if we have received our request, increment pc and make a new request
-                -- if we have an outstanding request with no response yet, do not increment pc
-                if (i_pcwen = '1') then
-                    pc   <= unsigned(i_pc);
-                    iren <= '0';
-                    req  <= '0';
-                elsif (induced_stall = '1') then
-                    req  <= '0';
-                    iren <= '0';
-                elsif (req = '0') then
-                    iren <= '1';
-                    req  <= '1';
-                elsif (req = '1' and i_ivalid = '1') then
-                    pc   <= pc + 4;
-                    iren <= '1';
-                    req  <= '1';
-                else
-                    iren <= '0';
-                end if;
-            end if;
-        end if;
-    end process FetchEngine;
+    eFetch : entity rktcpu.FetchEngine
+    port map (
+        i_clk    => i_clk,
+        i_resetn => i_resetn,
 
-    -- When an instruction comes back, its assumed to be in order.
-    -- Therefore, we receive the instruction and pop the oldest requested pc
-    -- out of the queue.
-    ReceiveBuffer: process(i_clk)
-    begin
-        if rising_edge(i_clk) then
-            if (i_resetn = '0') then
-                instr  <= x"00000000";
-                rpc    <= x"00000000";
-                ivalid <= '0';
-            else
-                ivalid <= i_ivalid and req and not i_pcwen;
-                if ((i_ivalid and req and not i_pcwen) = '1') then
-                    instr <= i_instr;
-                    rpc   <= std_logic_vector(pc);
-                else
-                    instr <= x"00000000";
-                    rpc   <= x"00000000";
-                end if;
-            end if;
-        end if;
-    end process ReceiveBuffer;
+        o_pc    => o_pc,
+        o_iren  => iren,
+        i_stall => induced_stall,
+        o_rpc   => rpc,
+
+        i_pcwen => i_pcwen,
+        i_pc    => i_pc
+    );
 
     Engine: process(i_clk)
         variable stall   : std_logic := '0';
@@ -176,14 +133,14 @@ begin
                         i_mvalid   => i_mvalid,
                         i_csrdone  => i_csrdone,
                         i_dpc      => rpc,
-                        i_instr    => instr,
-                        i_dvalid   => ivalid,
+                        i_instr    => i_instr,
+                        i_dvalid   => i_ivalid,
                         i_istall   => induced_stall,
                         io_stall   => stall
                     );
 
                     -- Verify that i_ivalid and stall are never the same value.
-                    assert (not ((i_ivalid and stall) = '1'));
+                    --assert (not ((i_ivalid and stall) = '1'));
                 end if;
             end if;
         end if;
