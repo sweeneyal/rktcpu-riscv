@@ -50,16 +50,20 @@ architecture tb of tb_SimpleAllUp is
     signal instr_rvalid : std_logic := '0';
 
     signal data_addr   : std_logic_vector(31 downto 0) := x"00000000";
+    signal data_addr_upper : std_logic_vector(18 downto 0) := "0000000000000000000";
     signal data_ren    : std_logic := '0';
     signal data_ren_idxed : std_logic := '0';
     signal data_wen    : std_logic_vector(3 downto 0) := "0000";
     signal data_wdata  : std_logic_vector(31 downto 0) := x"00000000";
     signal data_rdata  : std_logic_vector(31 downto 0) := x"00000000";
     signal data_rvalid : std_logic := '0';
+    signal data_local_rdata  : std_logic_vector(31 downto 0) := x"00000000";
+    signal data_local_rvalid : std_logic := '0';
 
     signal gpio_ren_idxed : std_logic := '0';
     signal gpio           : std_logic_vector(31 downto 0) := x"00000000";
     signal gpio_rdata     : std_logic_vector(31 downto 0) := x"00000000";
+    signal gpio_rvalid    : std_logic := '0';
 begin
 
     CreateClock(clk=>clk, period=>5 ns);
@@ -103,7 +107,11 @@ begin
         o_instr_rvalid => instr_rvalid
     );
 
-    data_ren_idxed <= data_ren and bool2bit(data_addr(31 downto 13) = x"00001");
+    data_addr_upper <= data_addr(31 downto 13);
+    data_ren_idxed <= data_ren and bool2bit(data_addr_upper = "0000000000000000001");
+
+    data_rdata <= gpio_rdata when (data_addr = x"00010000") else data_local_rdata;
+    data_rvalid <= gpio_rvalid when (data_addr = x"00010000") else data_local_rvalid;
 
     eDmem : entity rktcpu.ByteAddrBram
     generic map (
@@ -117,8 +125,8 @@ begin
         i_ena     => data_ren_idxed,
         i_wena    => data_wen,
         i_wdataa  => data_wdata,
-        o_rdataa  => data_rdata,
-        o_rvalida => data_rvalid,
+        o_rdataa  => data_local_rdata,
+        o_rvalida => data_local_rvalid,
 
         i_addrb   => (others => '0'),
         i_enb     => '0',

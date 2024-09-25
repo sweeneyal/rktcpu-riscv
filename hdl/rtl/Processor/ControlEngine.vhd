@@ -126,7 +126,7 @@ begin
                     hazards       := identify_hazards(pipeline(cDecodeIdx), pipeline(cExecuteIdx), pipeline(cMemAccessIdx));
                     hazards_rs1   <= hazards(0 to 1);
                     hazards_rs2   <= hazards(2 to 3);
-                    induced_stall <= induce_stall(pipeline(0), pipeline(1));
+                    induced_stall <= induce_stall(pipeline(0));
 
                     advance(
                         io_stages  => pipeline,
