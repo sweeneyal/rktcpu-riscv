@@ -38,10 +38,6 @@ for file in files:
 def encode(tb_cfg):
     return ", ".join(["%s:%s" % (key, str(tb_cfg[key])) for key in tb_cfg])
 
-tb_cfg = dict(instructions="asm/test002.hex")
-tb_ControlEngine = tb.test_bench('tb_ControlEngine')
-tb_ControlEngine.add_config(name='Test002_AddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
-
 tb_cfg = dict(instructions="asm/test001.hex", logpath="logs/test001.csv")
 tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
 tb_RktCpuRiscV.add_config(name='Test001_SimpleProgram', generics=dict(encoded_tb_cfg=encode(tb_cfg)))

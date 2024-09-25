@@ -42,7 +42,7 @@ package RktCpuDefinitions is
 
     function is_rd_valid(stage : stage_t) return boolean;
 
-    function induce_stall(stage0, stage1 : stage_t) return std_logic;
+    function induce_stall(stage0 : stage_t) return std_logic;
 
     function identify_hazards(stage0, stage1, stage2 : stage_t) return std_logic_vector;
 
@@ -172,13 +172,11 @@ package body RktCpuDefinitions is
         end case;
     end function;
 
-    function induce_stall(stage0, stage1 : stage_t) return std_logic is
+    function induce_stall(stage0 : stage_t) return std_logic is
     begin
-        if (stage1.opcode = cLoadOpcode or stage1.opcode = cEcallOpcode) then
-            if (((stage0.rs1 = stage1.rd) and is_rs1_valid(stage0)) 
-                    or ((stage0.rs2 = stage1.rd) and is_rs2_valid(stage0))) then
-                return '1';
-            end if;
+        if (stage0.opcode = cLoadOpcode or 
+            (stage0.opcode = cEcallOpcode and stage0.funct3 /= "000")) then
+            return '1';
         end if;
         return '0';
     end function;
@@ -306,20 +304,6 @@ package body RktCpuDefinitions is
             io_stages(cFetchIdx).utype  <= get_utype(i_instr);
             io_stages(cFetchIdx).jtype  <= get_jtype(i_instr);
             io_stages(cFetchIdx).valid  <= i_dvalid;
-        else
-            io_stages(cFetchIdx).pc     <= x"00000000";
-            io_stages(cFetchIdx).opcode <= cAluImmedOpcode;
-            io_stages(cFetchIdx).rd     <= "00000";
-            io_stages(cFetchIdx).rs1    <= "00000";
-            io_stages(cFetchIdx).rs2    <= "00000";
-            io_stages(cFetchIdx).funct3 <= "000";
-            io_stages(cFetchIdx).funct7 <= "0000000";
-            io_stages(cFetchIdx).itype  <= x"000";
-            io_stages(cFetchIdx).stype  <= x"000";
-            io_stages(cFetchIdx).btype  <= '0' & x"000";
-            io_stages(cFetchIdx).utype  <= x"00000";
-            io_stages(cFetchIdx).jtype  <= '0' & x"00000";
-            io_stages(cFetchIdx).valid  <= '0';
         end if;
     end procedure;
     
