@@ -105,7 +105,7 @@ class Rv32iModel():
         elif funct3 == 7:
             return np.uint32(opA) > np.uint32(opB)
 
-    def step(self, mem) -> None:
+    def step(self, mem, csr) -> None:
         # Get the instruction pointed to by the pc
         instr = mem.read(self.pc)
         # Decode the instruction according to the spec
@@ -179,7 +179,23 @@ class Rv32iModel():
         elif decoded["opcode"] == FENCE_OPCODE:
             print("FENCE")
         elif decoded["opcode"] == ECALL_OPCODE:
-            print("ECALL")
+            if decoded["funct3"] == 0:
+                print("ECALL")
+            elif decoded["funct3"] == 1:
+                addr = decoded["itype"]
+                # TODO: Finish this
+                #csr.access(addr)
+            elif decoded["funct3"] == 2:
+                pass
+            elif decoded["funct3"] == 3:
+                pass
+            elif decoded["funct3"] == 5:
+                pass
+            elif decoded["funct3"] == 6:
+                pass
+            elif decoded["funct3"] == 7:
+                pass
+
         else:
             raise ValueError
         

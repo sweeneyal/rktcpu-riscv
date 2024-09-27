@@ -62,17 +62,18 @@ class CsrRegisters:
         for addr in MCSR_ADDRS:
             self.registers[addr] = np.uint32(0)
 
-    def _perform_read(self, addr, offset, mode=None):
-        pass
-
-    def _perform_write(self, addr, offset, data, mode=None):
-        pass
-
-    def read():
-        pass
-
-    def write():
-        pass
+    def access(self, addr, data=None, mode=None):
+        register = self.registers[addr]
+        ret = int(register)
+        if mode == 's':
+            if data is not None:
+                register = np.bitwise_or(register, data)
+        elif mode == 'c':
+            if data is not None:
+                register = np.bitwise_and(register, data)
+        else:
+            register = data
+        return ret
 
     def step():
         pass
