@@ -284,7 +284,7 @@ package body CsrDefinitions is
                 when 16#323# to 16#33F# =>
                     hpmaddr := to_natural(i_addr) - 16#323#;
                     if (i_wen = '1') then
-                        i_mcsr.mhpmevents(hpmaddr)(31 downto 0) <= unsigned(i_wdata);
+                        i_mcsr.mhpmevents(hpmaddr)(31 downto 0) <= i_wdata;
                     else
                         o_rdata <= std_logic_vector(i_mcsr.mhpmevents(hpmaddr)(31 downto 0));
                     end if;
