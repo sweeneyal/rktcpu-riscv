@@ -47,6 +47,7 @@ architecture tb of tb_RktCpuRiscV is
     signal instr_ren    : std_logic := '0';
     signal instr_wen    : std_logic_vector(3 downto 0) := "0000";
     signal instr_wdata  : std_logic_vector(31 downto 0) := x"00000000";
+    signal instr_wready : std_logic := '0';
     signal instr_rdata  : std_logic_vector(31 downto 0) := x"00000000";
     signal instr_rvalid : std_logic := '0';
 
@@ -54,12 +55,16 @@ architecture tb of tb_RktCpuRiscV is
     signal data_ren    : std_logic := '0';
     signal data_wen    : std_logic_vector(3 downto 0) := "0000";
     signal data_wdata  : std_logic_vector(31 downto 0) := x"00000000";
+    signal data_wready : std_logic := '0';
     signal data_rdata  : std_logic_vector(31 downto 0) := x"00000000";
     signal data_rvalid : std_logic := '0';
 begin
 
     CreateClock(clk=>clk, period=>5 ns);
     
+    instr_wready <= (instr_wen(3) or instr_wen(2) or instr_wen(1) or instr_wen(0)) and instr_ren;
+    data_wready  <= (data_wen(3) or data_wen(2) or data_wen(1) or data_wen(0)) and data_ren;
+
     eDut : entity rktcpu.RktCpuRiscV
     generic map (
         cGenerateLoggers => true,
@@ -74,6 +79,7 @@ begin
         o_instr_ren    => instr_ren,
         o_instr_wen    => instr_wen,
         o_instr_wdata  => instr_wdata,
+        i_instr_wready => instr_wready,
         i_instr_rdata  => instr_rdata,
         i_instr_rvalid => instr_rvalid,
 
@@ -81,6 +87,7 @@ begin
         o_data_ren    => data_ren,
         o_data_wen    => data_wen,
         o_data_wdata  => data_wdata,
+        i_data_wready => data_wready,
         i_data_rdata  => data_rdata,
         i_data_rvalid => data_rvalid,
 

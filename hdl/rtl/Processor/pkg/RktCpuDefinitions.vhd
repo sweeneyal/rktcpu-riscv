@@ -235,9 +235,10 @@ package body RktCpuDefinitions is
         -- entire rest of the pipeline. Writeback can finish, but everything else
         -- must stop.
         io_stall := '0';
-        if ((i_mvalid = '0' and io_stages(cMemAccessIdx).opcode = cLoadOpcode) or 
+        if ((i_mvalid = '0' and ((io_stages(cMemAccessIdx).opcode = cLoadOpcode) or
+                (io_stages(cMemAccessIdx).opcode = cStoreOpcode))) or 
                 (i_csrdone = '0' and io_stages(cMemAccessIdx).opcode = cEcallOpcode and 
-                io_stages(cMemAccessIdx).funct3 /= "000")) then
+                    io_stages(cMemAccessIdx).funct3 /= "000")) then
             io_stages(cWritebackIdx) <= (
                 pc     => x"00000000",
                 opcode => cAluImmedOpcode,
@@ -304,6 +305,22 @@ package body RktCpuDefinitions is
             io_stages(cFetchIdx).utype  <= get_utype(i_instr);
             io_stages(cFetchIdx).jtype  <= get_jtype(i_instr);
             io_stages(cFetchIdx).valid  <= i_dvalid;
+        elsif (((not i_dvalid) and (not io_stall)) = '1') then
+            io_stages(cFetchIdx) <= (
+                pc     => x"00000000",
+                opcode => "0000000",
+                rs1    => "00000",
+                rs2    => "00000",
+                rd     => "00000",
+                funct3 => "000",
+                funct7 => "0000000",
+                itype  => x"000",
+                stype  => x"000",
+                btype  => '0' & x"000",
+                utype  => x"00000",
+                jtype  => '0' & x"00000",
+                valid  => '0'
+            );
         end if;
     end procedure;
     

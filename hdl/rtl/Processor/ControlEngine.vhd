@@ -22,6 +22,7 @@ entity ControlEngine is
         o_iren    : out std_logic;
         i_instr   : in std_logic_vector(31 downto 0);
         i_ivalid  : in std_logic;
+        o_en      : out std_logic;
 
         i_mvalid  : in std_logic;
         i_csrdone : in std_logic;
@@ -48,6 +49,7 @@ architecture rtl of ControlEngine is
     signal ivalid : std_logic := '0';
     signal iren   : std_logic := '0';
     signal req    : std_logic := '0';
+    signal pcwen  : std_logic := '0';
 
     signal hazards_rs1    : std_logic_vector(cMemAccessIdx to cWritebackIdx) := (others => '0');
     signal hazards_rs2    : std_logic_vector(cMemAccessIdx to cWritebackIdx) := (others => '0');
@@ -60,6 +62,8 @@ begin
 
     o_iren <= iren and not i_pcwen;
 
+    pcwen <= i_pcwen or i_irvalid;
+
     eFetch : entity rktcpu.FetchEngine
     port map (
         i_clk    => i_clk,
@@ -70,7 +74,7 @@ begin
         i_stall => induced_stall,
         o_rpc   => rpc,
 
-        i_pcwen => i_pcwen,
+        i_pcwen => pcwen,
         i_pc    => i_pc
     );
 
@@ -120,13 +124,12 @@ begin
                     end loop;
                     pipeline(cWritebackIdx) <= pipeline(cMemAccessIdx);
 
-                elsif (i_irvalid = '1') then
-                    assert False report "Not implemented yet!!!" severity error;
+                -- elsif (i_irvalid = '1') then
+                --     assert False report "Not implemented yet!!!" severity error;
                 else
                     hazards       := identify_hazards(pipeline(cDecodeIdx), pipeline(cExecuteIdx), pipeline(cMemAccessIdx));
                     hazards_rs1   <= hazards(0 to 1);
                     hazards_rs2   <= hazards(2 to 3);
-                    induced_stall <= induce_stall(pipeline(0));
 
                     advance(
                         io_stages  => pipeline,
@@ -138,6 +141,9 @@ begin
                         i_istall   => induced_stall,
                         io_stall   => stall
                     );
+
+                    o_en <= stall;
+                    induced_stall <= induce_stall(pipeline(0)) or stall;
 
                     -- Verify that i_ivalid and stall are never the same value.
                     --assert (not ((i_ivalid and stall) = '1'));
