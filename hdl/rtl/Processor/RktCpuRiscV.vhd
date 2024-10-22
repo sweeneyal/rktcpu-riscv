@@ -13,8 +13,8 @@ library rktcpu;
 
 entity RktCpuRiscV is
     generic (
-        cGenerateLoggers : boolean := false;
-        cLoggerPath      : string := ""
+        cGenerateLoggers    : boolean := false;
+        cRegisterLoggerPath : string := ""
     );
     port (
         i_clk    : in std_logic;
@@ -415,10 +415,11 @@ begin
     -- Checks to verify implementation.
     --------------------------------------------------------------------------------------------------------------
 
+    -- synthesis translate_off
     gLogger: if cGenerateLoggers generate
-        eLogger : entity rktcpu.Logger
+        eRegLogger : entity rktcpu.RegisterWriteLogger
         generic map (
-            cLoggerPath => cLoggerPath
+            cLoggerPath => cRegisterLoggerPath
         ) port map (
             i_clk      => i_clk,
             i_resetn   => i_resetn,
@@ -426,13 +427,9 @@ begin
             i_rd       => ctrl_cmn.rd,
             i_rdwen    => ctrl_cmn.rdwen,
             i_wbresult => writeback_res,
-            i_mapc     => ctrl_dbg.mapc,
-            i_addr     => lsu_addr,
-            i_ren      => data_ren,
-            i_wen      => data_wen,
-            i_wdata    => data_wdata,
             i_valid    => ctrl_dbg.valid
         );
     end generate gLogger;
+    -- synthesis translate_on
     
 end architecture rtl;

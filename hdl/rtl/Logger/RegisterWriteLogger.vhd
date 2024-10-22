@@ -8,7 +8,7 @@ library universal;
     use universal.CommonFunctions.all;
     use universal.CommonTypes.all;
 
-entity Logger is
+entity RegisterWriteLogger is
     generic (
         cLoggerPath : string
     );
@@ -19,16 +19,11 @@ entity Logger is
         i_rd       : in std_logic_vector(4 downto 0);
         i_rdwen    : in std_logic;
         i_wbresult : in std_logic_vector(31 downto 0);
-        i_mapc     : in std_logic_vector(31 downto 0);
-        i_addr     : in std_logic_vector(31 downto 0);
-        i_ren      : in std_logic;
-        i_wen      : in std_logic_vector(3 downto 0);
-        i_wdata    : in std_logic_vector(31 downto 0);
         i_valid    : in std_logic
     );
-end entity Logger;
+end entity RegisterWriteLogger;
 
-architecture rtl of Logger is
+architecture rtl of RegisterWriteLogger is
     file logfile : text;
 begin
     
@@ -53,12 +48,7 @@ begin
                     "0x" & to_hstring(i_rd) & "," &
                     std_logic'image(i_rdwen) & "," &
                     "0x" & to_hstring(i_wbresult) & "," &
-                    std_logic'image(i_valid) & "," &
-                    "0x" & to_hstring(i_mapc) & "," &
-                    "0x" & to_hstring(i_addr) & "," &
-                    std_logic'image(i_ren) & ',' &
-                    "0x" & to_hstring(i_wen) & ',' &
-                    "0x" & to_hstring(i_wdata) & ',');
+                    std_logic'image(i_valid) & ",");
                 writeline(logfile, logline);
                 file_close(logfile);
                 cycle := cycle + 1;

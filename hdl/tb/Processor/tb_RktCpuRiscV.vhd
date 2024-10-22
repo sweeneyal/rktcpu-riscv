@@ -67,8 +67,8 @@ begin
 
     eDut : entity rktcpu.RktCpuRiscV
     generic map (
-        cGenerateLoggers => true,
-        cLoggerPath      => tb_cfg.logpath
+        cGenerateLoggers    => true,
+        cRegisterLoggerPath => tb_cfg.logpath
     ) port map (
         i_clk    => clk,
         i_resetn => resetn,
