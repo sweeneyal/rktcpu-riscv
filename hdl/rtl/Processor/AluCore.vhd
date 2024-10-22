@@ -14,7 +14,7 @@ entity AluCore is
         i_clk      : in std_logic;
         i_resetn   : in std_logic;
         i_ctrl_alu : in alu_controls_t;
-        i_stall    : in std_logic;
+        i_en       : in std_logic;
         i_opA      : in std_logic_vector(31 downto 0);
         i_opB      : in std_logic_vector(31 downto 0);
         o_res      : out std_logic_vector(31 downto 0)
@@ -22,21 +22,18 @@ entity AluCore is
 end entity AluCore;
 
 architecture rtl of AluCore is
-    signal en          : std_logic := '0';
     signal adder_res   : std_logic_vector(31 downto 0) := x"00000000";
     signal slt_res     : std_logic_vector(31 downto 0) := x"00000000";
     signal bitwise_res : std_logic_vector(31 downto 0) := x"00000000";
     signal shift_res   : std_logic_vector(31 downto 0) := x"00000000";
 begin
     
-    en <= not i_stall;
-
     -- ADD/I, SUB/I, SLT/U/I
     eAdder : entity rktcpu.Adder
     port map (
         i_clk    => i_clk,
         i_resetn => i_resetn,
-        i_en     => en,
+        i_en     => i_en,
         i_addn   => i_ctrl_alu.addn,
         i_opA    => i_opA,
         i_opB    => i_opB,
@@ -49,7 +46,7 @@ begin
             if (i_resetn = '0') then
                 slt_res <= x"00000000";
             else
-                if (en = '1') then
+                if (i_en = '1') then
                     if (i_ctrl_alu.slt = '1') then
                         if (i_ctrl_alu.sltuns = '1') then
                             slt_res <= (31 downto 1 => '0') & bool2bit(unsigned(i_opA) < unsigned(i_opB));
@@ -67,7 +64,7 @@ begin
     port map (
         i_clk    => i_clk,
         i_resetn => i_resetn,
-        i_en     => en,
+        i_en     => i_en,
         i_funct3 => i_ctrl_alu.funct3,
         i_opA    => i_opA,
         i_opB    => i_opB,
@@ -79,7 +76,7 @@ begin
     port map (
         i_clk    => i_clk,
         i_resetn => i_resetn,
-        i_en     => en,
+        i_en     => i_en,
         i_right  => i_ctrl_alu.sright,
         i_arith  => i_ctrl_alu.sarith,
         i_opA    => i_opA,

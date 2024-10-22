@@ -13,8 +13,8 @@ library rktcpu;
 
 entity RktCpuRiscV is
     generic (
-        cGenerateLoggers : boolean := false;
-        cLoggerPath      : string := ""
+        cGenerateLoggers    : boolean := false;
+        cRegisterLoggerPath : string := ""
     );
     port (
         i_clk    : in std_logic;
@@ -26,6 +26,7 @@ entity RktCpuRiscV is
         o_instr_ren    : out std_logic;
         o_instr_wen    : out std_logic_vector(3 downto 0);
         o_instr_wdata  : out std_logic_vector(31 downto 0);
+        i_instr_wready : in std_logic;
         i_instr_rdata  : in std_logic_vector(31 downto 0);
         i_instr_rvalid : in std_logic;
 
@@ -33,6 +34,7 @@ entity RktCpuRiscV is
         o_data_ren    : out std_logic;
         o_data_wen    : out std_logic_vector(3 downto 0);
         o_data_wdata  : out std_logic_vector(31 downto 0);
+        i_data_wready : in std_logic;
         i_data_rdata  : in std_logic_vector(31 downto 0);
         i_data_rvalid : in std_logic;
 
@@ -87,11 +89,16 @@ architecture rtl of RktCpuRiscV is
     signal data_ren   : std_logic := '0';
     signal data_wen   : std_logic_vector(3 downto 0) := "0000";
     signal data_wdata : std_logic_vector(31 downto 0) := x"00000000";
+
+    signal en : std_logic := '1';
+    signal mvalid : std_logic := '0';
 begin
 
     -------------------------------------------------------------------------------------------------
     -- Fetch and Decode Stage
     -------------------------------------------------------------------------------------------------
+
+    mvalid <= i_data_rvalid or i_data_wready;
 
     eControl : entity rktcpu.ControlEngine
     port map (
@@ -101,7 +108,7 @@ begin
         o_iren    => o_instr_ren,
         i_instr   => i_instr_rdata,
         i_ivalid  => i_instr_rvalid,
-        i_mvalid  => i_data_rvalid,
+        i_mvalid  => mvalid,
         i_csrdone => csrdone,
 
         o_ctrl_cmn  => ctrl_cmn,
@@ -200,7 +207,7 @@ begin
         i_clk      => i_clk,
         i_resetn   => i_resetn,
         i_ctrl_alu => ctrl_alu,
-        i_stall    => ctrl_cmn.stall,
+        i_en       => en,
         i_opA      => opA,
         i_opB      => opB,
         o_res      => alu_res
@@ -217,12 +224,14 @@ begin
                 memaccess_reg_opA <= x"00000000";
                 memaccess_reg_opB <= x"00000000";
             else
-                lsu_addr      <= std_logic_vector(signed(opA) + signed(lsu_immed));
-                branch_addr   <= std_logic_vector(signed(ctrl_cmn.pc) + signed(ctrl_cmn.btype));
-                jump_addr     <= std_logic_vector(signed(jump_op) + signed(jump_immed));
-                jump_pjpc     <= std_logic_vector(signed(ctrl_cmn.pc) + to_signed(4, 32));
-                memaccess_reg_opA <= opA;
-                memaccess_reg_opB <= opB;
+                if (en = '1') then
+                    lsu_addr      <= std_logic_vector(signed(opA) + signed(lsu_immed));
+                    branch_addr   <= std_logic_vector(signed(ctrl_cmn.pc) + signed(ctrl_cmn.btype));
+                    jump_addr     <= std_logic_vector(signed(jump_op) + signed(jump_immed));
+                    jump_pjpc     <= std_logic_vector(signed(ctrl_cmn.pc) + to_signed(4, 32));
+                    memaccess_reg_opA <= opA;
+                    memaccess_reg_opB <= opB;
+                end if;
             end if;
         end if;
     end process MiscPipelineRegs;
@@ -357,26 +366,28 @@ begin
                 lsu_rdata  <= x"00000000";
                 alu_res_ma <= x"00000000";
             else
-                if (i_data_rvalid = '1') then
-                    case ctrl_mem.write_type(1 downto 0) is
-                        when "00" =>
-                            if (ctrl_mem.write_type(2) = '1') then
-                                lsu_rdata <= std_logic_vector(resize(unsigned(i_data_rdata(7 downto 0)), 32));
-                            else
-                                lsu_rdata <= std_logic_vector(resize(signed(i_data_rdata(7 downto 0)), 32));
-                            end if;
-                        when "01" =>
-                            if (ctrl_mem.write_type(2) = '1') then
-                                lsu_rdata <= std_logic_vector(resize(unsigned(i_data_rdata(15 downto 0)), 32));
-                            else
-                                lsu_rdata <= std_logic_vector(resize(signed(i_data_rdata(15 downto 0)), 32));
-                            end if;
-                        when others =>
-                            lsu_rdata <= i_data_rdata;
-                    end case;
+                if (en = '1') then
+                    if (i_data_rvalid = '1') then
+                        case ctrl_mem.write_type(1 downto 0) is
+                            when "00" =>
+                                if (ctrl_mem.write_type(2) = '1') then
+                                    lsu_rdata <= std_logic_vector(resize(unsigned(i_data_rdata(7 downto 0)), 32));
+                                else
+                                    lsu_rdata <= std_logic_vector(resize(signed(i_data_rdata(7 downto 0)), 32));
+                                end if;
+                            when "01" =>
+                                if (ctrl_mem.write_type(2) = '1') then
+                                    lsu_rdata <= std_logic_vector(resize(unsigned(i_data_rdata(15 downto 0)), 32));
+                                else
+                                    lsu_rdata <= std_logic_vector(resize(signed(i_data_rdata(15 downto 0)), 32));
+                                end if;
+                            when others =>
+                                lsu_rdata <= i_data_rdata;
+                        end case;
+                    end if;
+                    alu_res_ma   <= alu_res;
+                    jump_pjpc_ma <= jump_pjpc;
                 end if;
-                alu_res_ma   <= alu_res;
-                jump_pjpc_ma <= jump_pjpc;
             end if;
         end if;
     end process LsuData;
@@ -404,10 +415,11 @@ begin
     -- Checks to verify implementation.
     --------------------------------------------------------------------------------------------------------------
 
+    -- synthesis translate_off
     gLogger: if cGenerateLoggers generate
-        eLogger : entity rktcpu.Logger
+        eRegLogger : entity rktcpu.RegisterWriteLogger
         generic map (
-            cLoggerPath => cLoggerPath
+            cLoggerPath => cRegisterLoggerPath
         ) port map (
             i_clk      => i_clk,
             i_resetn   => i_resetn,
@@ -415,13 +427,9 @@ begin
             i_rd       => ctrl_cmn.rd,
             i_rdwen    => ctrl_cmn.rdwen,
             i_wbresult => writeback_res,
-            i_mapc     => ctrl_dbg.mapc,
-            i_addr     => lsu_addr,
-            i_ren      => data_ren,
-            i_wen      => data_wen,
-            i_wdata    => data_wdata,
             i_valid    => ctrl_dbg.valid
         );
     end generate gLogger;
+    -- synthesis translate_on
     
 end architecture rtl;
