@@ -1,6 +1,6 @@
 import numpy as np
 
-from utility import sign_extend, sll, srl, get_bits
+from rktcpu.riscv.utility import sign_extend, sll, srl, get_bits, hex
 
 BRANCH_OPCODE     = 0b1100011
 LOAD_OPCODE       = 0b0000011
@@ -15,9 +15,15 @@ FENCE_OPCODE      = 0b0001111
 ECALL_OPCODE      = 0b1110011
 
 class Rv32iModel():
-    def __init__(self) -> None:
+    def __init__(self, logpath=None, enablelogging=False) -> None:
         self.pc        = np.uint32(0)
         self.registers = np.zeros([32,1], np.uint32)
+        if enablelogging and (logpath is not None):
+            self.log = open(logpath, "w")
+            self.log.write("pc,rd,res,\n")
+
+    def close(self):
+        self.log.close()
 
     def _get_rs1(self, instr) -> int:
         return get_bits(instr, 15, 19)
@@ -118,6 +124,7 @@ class Rv32iModel():
             opB = self.registers[decoded["rs2"]]
             res = self.alu(opA, opB, decoded["funct3"], decoded["funct7"])
             self.registers[decoded["rd"]] = res
+            self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(res[0], 8)))
 
         elif decoded["opcode"] == ALU_IMMED_OPCODE:
             opA = self.registers[decoded["rs1"]]
@@ -127,10 +134,12 @@ class Rv32iModel():
             else:
                 res = self.alu(opA, opB, decoded["funct3"])
             self.registers[decoded["rd"]] = res
+            self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(res[0], 8)))
 
         elif decoded["opcode"] == LOAD_OPCODE:
             addr = self.registers[decoded["rs1"]] + \
-                np.uint32(np.int32(sign_extend(decoded["stype"], 12)))
+                np.uint32(np.int32(sign_extend(decoded["itype"], 12)))
+            addr = addr[0]
             if decoded["funct3"] == 0:
                 mode = "b"
             elif decoded["funct3"] == 1:
@@ -138,7 +147,8 @@ class Rv32iModel():
             elif decoded["funct3"] == 2:
                 mode = "w"
             data = mem.read(addr, mode)
-            self.registers[decoded["rd"]] = res
+            self.registers[decoded["rd"]] = data
+            self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(data[0], 8)))
 
         elif decoded["opcode"] == STORE_OPCODE:
             addr = self.registers[decoded["rs1"]] + \
@@ -155,10 +165,12 @@ class Rv32iModel():
         elif decoded["opcode"] == AUIPC_OPCODE:
             res = self.pc + (decoded["utype"] << 12)
             self.registers[decoded["rd"]] = res
+            self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(res, 8)))
 
         elif decoded["opcode"] == LOAD_UPPER_OPCODE:
             res = np.uint32((decoded["utype"] << 12))
             self.registers[decoded["rd"]] = res
+            self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(res, 8)))
 
         elif decoded["opcode"] == JUMP_OPCODE:
             self.pc = int(np.uint32(self.pc) + np.uint32(np.int32(sign_extend(decoded["jtype"], 21))))

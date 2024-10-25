@@ -75,5 +75,5 @@ class CsrRegisters:
             register = data
         return ret
 
-    def step():
+    def step(self):
         pass

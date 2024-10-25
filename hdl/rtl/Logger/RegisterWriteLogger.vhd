@@ -38,6 +38,8 @@ begin
             else
                 if (first) then
                     file_open(logfile, cLoggerPath, write_mode);
+                    write(logline,string'("cycle,pc,rd,rdwen,res,valid,"));
+                    writeline(logfile, logline);
                     first := false;
                 else
                     file_open(logfile, cLoggerPath, append_mode);

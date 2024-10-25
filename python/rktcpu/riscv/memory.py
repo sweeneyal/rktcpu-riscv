@@ -1,6 +1,6 @@
 import numpy as np
 
-from utility import sign_extend, sll, srl, get_bits
+from rktcpu.riscv.utility import sign_extend, sll, srl, get_bits
 
 class Memory():
     def __init__(self, instr_path=None, instr_addr=None) -> None:

@@ -20,3 +20,7 @@ def mask(lhs, rhs):
 def get_bits(val, lhs, rhs):
     m = mask(lhs, rhs)
     return srl(val & m, lhs) 
+
+def hex(val, len):
+    len = f'0{len}x'
+    return f'0x{val:{len}}'
