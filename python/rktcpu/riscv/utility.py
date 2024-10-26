@@ -23,4 +23,4 @@ def get_bits(val, lhs, rhs):
 
 def hex(val, len):
     len = f'0{len}x'
-    return f'0x{val:{len}}'
+    return '0x' + (f'{val:{len}}'.upper())

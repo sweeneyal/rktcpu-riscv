@@ -29,17 +29,30 @@ for test in tests:
 outputs = sorted(["logs/" + f for f in os.listdir("logs/") if re.search(r'test\d+\.csv$', f)])
 goldens = sorted(glob.glob("logs/test*_golden.csv"))
 for output, golden in zip(outputs, goldens):
+    # Get the log from the HDL simulation.
     df = pd.read_csv(output)
-    df = df[df["valid"] == "'1'"]
-    df = df[df["rdwen"] == "'1'"]
+    # Filter the log for valid register writes.
+    # TODO: Check for invalid register writes...
+    df = df[df.valid == "'1'"]
+    df = df[df.rdwen == "'1'"]
+    # Reset the index but keep the past index so we can check specific rows in the CSV
+    df.reset_index(inplace=True, drop=False)
 
+    # Get the log of the golden model for comparison.
     golden_df = pd.read_csv(golden)
-
-    print(output)
-    print(df["pc"])
-    print(golden_df["pc"])
-
-    # For all valid writes, I want to see:
-    # 1. The PC is the same
-    # 2. The RD is the same
-    # 3. The RES is the same
+    # Trim the golden log to fit only the amount of time the HDL simulation was run for.
+    golden_df_head = golden_df.head(df.shape[0])
+    # Combine the golden log with the simulation log for easier comparison.
+    df["golden_pc"] = golden_df_head.pc
+    df["golden_rd"] = golden_df_head.rd
+    df["golden_res"] = golden_df_head.res
+    
+    print(80 * "*")
+    print("Test: {}".format(output))
+    print(80 * "*")
+    comparison = df.apply(lambda row: not all(i in row.golden_pc for i in row.pc), axis=1)
+    print("> Differing PC values: {}".format(comparison.sum()))
+    comparison = df.apply(lambda row: not all(i in row.golden_rd for i in row.rd), axis=1)
+    print("> Differing RD values: {}".format(comparison.sum()))
+    comparison = df.apply(lambda row: not all(i in row.golden_res for i in row.res), axis=1)
+    print("> Differing RES values: {}".format(comparison.sum()))

@@ -105,11 +105,11 @@ class Rv32iModel():
         elif funct3 == 4:
             return np.int32(opA) < np.int32(opB)
         elif funct3 == 5:
-            return np.int32(opA) > np.int32(opB)
+            return np.int32(opA) >= np.int32(opB)
         elif funct3 == 6:
             return np.uint32(opA) < np.uint32(opB)
         elif funct3 == 7:
-            return np.uint32(opA) > np.uint32(opB)
+            return np.uint32(opA) >= np.uint32(opB)
 
     def step(self, mem, csr) -> None:
         # Get the instruction pointed to by the pc
@@ -123,8 +123,9 @@ class Rv32iModel():
             opA = self.registers[decoded["rs1"]]
             opB = self.registers[decoded["rs2"]]
             res = self.alu(opA, opB, decoded["funct3"], decoded["funct7"])
-            self.registers[decoded["rd"]] = res
-            self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(res[0], 8)))
+            if decoded["rd"] != 0:
+                self.registers[decoded["rd"]] = res
+                self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(res[0], 8)))
 
         elif decoded["opcode"] == ALU_IMMED_OPCODE:
             opA = self.registers[decoded["rs1"]]
@@ -133,8 +134,9 @@ class Rv32iModel():
                 res = self.alu(opA, opB, decoded["funct3"], decoded["funct7"])
             else:
                 res = self.alu(opA, opB, decoded["funct3"])
-            self.registers[decoded["rd"]] = res
-            self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(res[0], 8)))
+            if decoded["rd"] != 0:
+                self.registers[decoded["rd"]] = res
+                self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(res[0], 8)))
 
         elif decoded["opcode"] == LOAD_OPCODE:
             addr = self.registers[decoded["rs1"]] + \
@@ -147,8 +149,9 @@ class Rv32iModel():
             elif decoded["funct3"] == 2:
                 mode = "w"
             data = mem.read(addr, mode)
-            self.registers[decoded["rd"]] = data
-            self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(data[0], 8)))
+            if decoded["rd"] != 0:
+                self.registers[decoded["rd"]] = data
+                self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(data[0], 8)))
 
         elif decoded["opcode"] == STORE_OPCODE:
             addr = self.registers[decoded["rs1"]] + \
@@ -164,19 +167,27 @@ class Rv32iModel():
 
         elif decoded["opcode"] == AUIPC_OPCODE:
             res = self.pc + (decoded["utype"] << 12)
-            self.registers[decoded["rd"]] = res
-            self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(res, 8)))
+            if decoded["rd"] != 0:
+                self.registers[decoded["rd"]] = res
+                self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(res, 8)))
 
         elif decoded["opcode"] == LOAD_UPPER_OPCODE:
             res = np.uint32((decoded["utype"] << 12))
-            self.registers[decoded["rd"]] = res
+            if decoded["rd"] != 0:
+                self.registers[decoded["rd"]] = res
             self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(res, 8)))
 
         elif decoded["opcode"] == JUMP_OPCODE:
+            if decoded["rd"] != 0:
+                self.registers[decoded["rd"]] = self.pc + 4
+                self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(self.pc + 4, 8)))
             self.pc = int(np.uint32(self.pc) + np.uint32(np.int32(sign_extend(decoded["jtype"], 21))))
             pcupdate = True
 
         elif decoded["opcode"] == JUMP_REG_OPCODE:
+            if decoded["rd"] != 0:
+                self.registers[decoded["rd"]] = self.pc + 4
+                self.log.write("{},{},{},\n".format(hex(self.pc, 8), hex(decoded["rd"], 2), hex(self.pc + 4, 8)))
             self.pc = int(np.uint32(self.registers[decoded["rs1"]]) \
                           + np.uint32(np.int32(sign_extend(decoded["itype"], 12))))
             pcupdate = True
