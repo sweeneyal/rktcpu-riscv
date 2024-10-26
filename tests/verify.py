@@ -1,8 +1,13 @@
 import os
+import sys
 import glob
 import pathlib
 import re
 import pandas as pd
+
+path = os.path.abspath(os.path.dirname(__file__))
+RKTCPU_PATH=path + "/../python"
+sys.path.append(RKTCPU_PATH)
 
 from rktcpu.model import RktCpuModel
 
