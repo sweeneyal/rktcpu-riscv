@@ -38,31 +38,31 @@ for file in files:
 def encode(tb_cfg):
     return ", ".join(["%s:%s" % (key, str(tb_cfg[key])) for key in tb_cfg])
 
-tb_cfg = dict(instructions="./tests/asm/test001.hex", logpath="logs/test001.csv")
+tb_cfg = dict(instructions="./tests/asm/test001.hex", logpath="./tests/logs/test001.csv")
 tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
 tb_RktCpuRiscV.add_config(name='Test001_SimpleProgram', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
-tb_cfg = dict(instructions="./tests/asm/test002.hex", logpath="logs/test002.csv")
+tb_cfg = dict(instructions="./tests/asm/test002.hex", logpath="./tests/logs/test002.csv")
 tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
 tb_RktCpuRiscV.add_config(name='Test002_AddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
-tb_cfg = dict(instructions="./tests/asm/test003.hex", logpath="logs/test003.csv")
+tb_cfg = dict(instructions="./tests/asm/test003.hex", logpath="./tests/logs/test003.csv")
 tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
 tb_RktCpuRiscV.add_config(name='Test003_BranchAddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
-tb_cfg = dict(instructions="./tests/asm/test004.hex", logpath="logs/test004.csv")
+tb_cfg = dict(instructions="./tests/asm/test004.hex", logpath="./tests/logs/test004.csv")
 tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
 tb_RktCpuRiscV.add_config(name='Test004_HazardAddImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
-tb_cfg = dict(instructions="./tests/asm/test005.hex", logpath="logs/test005.csv")
+tb_cfg = dict(instructions="./tests/asm/test005.hex", logpath="./tests/logs/test005.csv")
 tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
 tb_RktCpuRiscV.add_config(name='Test005_HazardAddRegAndImmed', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
-tb_cfg = dict(instructions="./tests/asm/test006.hex", logpath="logs/test006.csv")
+tb_cfg = dict(instructions="./tests/asm/test006.hex", logpath="./tests/logs/test006.csv")
 tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
 tb_RktCpuRiscV.add_config(name='Test006_SqrtFunction', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 
-tb_cfg = dict(instructions="./tests/asm/test007.hex", logpath="logs/test007.csv")
+tb_cfg = dict(instructions="./tests/asm/test007.hex", logpath="./tests/logs/test007.csv")
 tb_RktCpuRiscV = tb.test_bench('tb_RktCpuRiscV')
 tb_RktCpuRiscV.add_config(name='Test007_WordMemoryAccesses', generics=dict(encoded_tb_cfg=encode(tb_cfg)))
 

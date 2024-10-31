@@ -12,12 +12,12 @@ sys.path.append(RKTCPU_PATH)
 from rktcpu.model import RktCpuModel
 
 # Get all test hex files.
-tests = sorted(glob.glob("asm/test*.hex"))
+tests = sorted(glob.glob("tests/asm/test*.hex"))
 for test in tests:
     # Generate the settings struct and new paths for log files
     _, tail = os.path.split(test)
     name = pathlib.Path(tail).stem
-    logname = "logs/{}_golden.csv".format(name)
+    logname = "tests/logs/{}_golden.csv".format(name)
     settings = {
         "logpath"       : logname,
         "enablelogging" : True,
@@ -31,8 +31,8 @@ for test in tests:
         model.step()
     model.close()
 
-outputs = sorted(["logs/" + f for f in os.listdir("logs/") if re.search(r'test\d+\.csv$', f)])
-goldens = sorted(glob.glob("logs/test*_golden.csv"))
+outputs = sorted(["tests/logs/" + f for f in os.listdir("tests/logs/") if re.search(r'test\d+\.csv$', f)])
+goldens = sorted(glob.glob("tests/logs/test*_golden.csv"))
 for output, golden in zip(outputs, goldens):
     # Get the log from the HDL simulation.
     df = pd.read_csv(output)
