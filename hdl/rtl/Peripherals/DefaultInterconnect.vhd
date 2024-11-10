@@ -39,7 +39,7 @@ begin
     o_gpio_wdata <= i_data_wdata;
 
     o_bram_addr     <= i_data_addr(12 downto 0);
-    data_addr_upper <= i_data_addr(31 downto cBramAddrWidth_b);
+    data_addr_upper <= i_data_addr(31 downto 13);
     o_bram_ren      <= i_data_ren and bool2bit(to_natural(data_addr_upper) = 1);
     o_bram_wen      <= i_data_wen;
     o_bram_wdata    <= i_data_wdata;
