@@ -242,6 +242,7 @@ begin
     o_ctrl_dbg.mapc  <= pipeline(cMemAccessIdx).pc;
     o_ctrl_dbg.valid <= pipeline(cWritebackIdx).valid;
 
+    -- synthesis translate_off
     InstructionPipeChecker: process(pipeline)
         variable lhpc : std_logic_vector(31 downto 0) := x"00000000";
         variable rhpc : std_logic_vector(31 downto 0) := x"00000000";
@@ -260,5 +261,6 @@ begin
         end loop;
         cc := cc + 1;
     end process InstructionPipeChecker;
+    -- synthesis translate_on
 
 end architecture rtl;

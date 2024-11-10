@@ -19,7 +19,7 @@ proc rktcpu_rv_tools::autoinit {} {
 # Get the repository path of the IP
 proc rktcpu_rv_tools::get_ip_repo {} {
     variable tcldir
-    return [file dirname $tcldir/..]
+    return [file dirname $tcldir/../..]
 }
 
 # Initializes the project by including the universal files as a dependency,
@@ -44,6 +44,7 @@ proc rktcpu_rv_tools::read_library_sources {} {
     # Get all Peripherals files
     add_files $home/hdl/rtl/Peripherals/BramRom.vhd
     set_property library rktcpu [get_files BramRom.vhd]
+    set_property file_type {VHDL 2008} [get_files BramRom.vhd]
 
     add_files $home/hdl/rtl/Peripherals/ByteAddrBram.vhd
     set_property library rktcpu [get_files ByteAddrBram.vhd]
@@ -63,6 +64,7 @@ proc rktcpu_rv_tools::read_library_sources {} {
     # Get all Processor/pkg files
     add_files $home/hdl/rtl/Processor/pkg/CsrDefinitions.vhd
     set_property library rktcpu [get_files CsrDefinitions.vhd]
+    set_property file_type {VHDL 2008} [get_files CsrDefinitions.vhd]
 
     add_files $home/hdl/rtl/Processor/pkg/RiscVDefinitions.vhd
     set_property library rktcpu [get_files RiscVDefinitions.vhd]
@@ -79,6 +81,7 @@ proc rktcpu_rv_tools::read_library_sources {} {
 
     add_files $home/hdl/rtl/Processor/BarrelShift.vhd
     set_property library rktcpu [get_files BarrelShift.vhd]
+    set_property file_type {VHDL 2008} [get_files BarrelShift.vhd]
 
     add_files $home/hdl/rtl/Processor/Bitwise.vhd
     set_property library rktcpu [get_files Bitwise.vhd]
@@ -94,6 +97,7 @@ proc rktcpu_rv_tools::read_library_sources {} {
 
     add_files $home/hdl/rtl/Processor/DualPortBram.vhd
     set_property library rktcpu [get_files DualPortBram.vhd]
+    set_property file_type {VHDL 2008} [get_files DualPortBram.vhd]
 
     add_files $home/hdl/rtl/Processor/FetchEngine.vhd
     set_property library rktcpu [get_files FetchEngine.vhd]

@@ -242,13 +242,13 @@ begin
 
     MemAccessHazards: process(ctrl_cmn, memaccess_reg_opA, memaccess_reg_opB, writeback_res)
     begin
-        if (ctrl_cmn.hzd_rs1_ma) then
+        if (ctrl_cmn.hzd_rs1_ma = '1') then
             memaccess_opA <= writeback_res;
         else
             memaccess_opA <= memaccess_reg_opA;
         end if;
 
-        if (ctrl_cmn.hzd_rs2_ma) then
+        if (ctrl_cmn.hzd_rs2_ma = '1') then
             memaccess_opB <= writeback_res;
         else
             memaccess_opB <= memaccess_reg_opB;
