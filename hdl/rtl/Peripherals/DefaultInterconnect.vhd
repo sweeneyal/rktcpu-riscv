@@ -44,8 +44,8 @@ begin
     o_bram_wen      <= i_data_wen;
     o_bram_wdata    <= i_data_wdata;
 
-    o_data_rdata  <= i_gpio_rdata when (data_addr = x"00010000") else i_bram_rdata;
-    o_data_rvalid <= i_gpio_rvalid when (data_addr = x"00010000") else i_bram_rvalid;
+    o_data_rdata  <= i_gpio_rdata when (i_data_addr = x"00010000") else i_bram_rdata;
+    o_data_rvalid <= i_gpio_rvalid when (i_data_addr = x"00010000") else i_bram_rvalid;
     
     
 end architecture rtl;
