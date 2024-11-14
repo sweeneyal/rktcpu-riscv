@@ -9,5 +9,60 @@
         "Duration": 0,
         "Creation_Date": "",
         "Due_Date": ""
+    },
+    "2": {
+        "Title": "Implement Simple Crossbar Interconnect",
+        "Description": "We need a crossbar interconnect that supports the default peripherals and the simple bus implementation we're using",
+        "Status": "Ready",
+        "Tag": "ARCH",
+        "Creation_Date": "2024-11-14 11:22:07",
+        "Due_Date": "",
+        "Begin_Time": "",
+        "Complete_Time": "",
+        "Duration": 0
+    },
+    "3": {
+        "Title": "Implement Axi4 Lite interface for RktCpuCore",
+        "Description": "We need to support Axi4 Lite to allow use with other Axi4 Lite IP",
+        "Status": "Ready",
+        "Tag": "ARCH",
+        "Creation_Date": "2024-11-14 11:23:33",
+        "Due_Date": "",
+        "Begin_Time": "",
+        "Complete_Time": "",
+        "Duration": 0
+    },
+    "4": {
+        "Title": "Implement Fence Instruction",
+        "Description": "Fence instructions are not yet implemented and are necessary",
+        "Status": "Ready",
+        "Tag": "ISA",
+        "Creation_Date": "2024-11-14 11:24:04",
+        "Due_Date": "",
+        "Begin_Time": "",
+        "Complete_Time": "",
+        "Duration": 0
+    },
+    "5": {
+        "Title": "Test Existing IP on Hardware",
+        "Description": "The current implementation could work on hardware, test it",
+        "Status": "Ready",
+        "Tag": "HW",
+        "Creation_Date": "2024-11-14 11:24:32",
+        "Due_Date": "",
+        "Begin_Time": "",
+        "Complete_Time": "",
+        "Duration": 0
+    },
+    "6": {
+        "Title": "Implement CSRs",
+        "Description": "We need CSRs to be able to implement more complicated programs",
+        "Status": "Ready",
+        "Tag": "ISA",
+        "Creation_Date": "2024-11-14 11:25:26",
+        "Due_Date": "",
+        "Begin_Time": "",
+        "Complete_Time": "",
+        "Duration": 0
     }
 }
