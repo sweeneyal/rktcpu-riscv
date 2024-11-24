@@ -1,5 +1,5 @@
 namespace eval rktcpu_rv_tools {
-    variable tcldir [file dirname [file normalize [info script]]]
+    variable home [file dirname [file normalize [info script]]]
 
     variable version "v0.1.0"
 
@@ -10,23 +10,14 @@ namespace eval rktcpu_rv_tools {
     namespace export read_library_sources
 }
 
-# Calls this script in order to reinitialize in case the script changes.
-proc rktcpu_rv_tools::autoinit {} {
-    variable tcldir
-    source $tcldir/rktcpu-riscv.tcl
-}
-
 # Get the repository path of the IP
 proc rktcpu_rv_tools::get_ip_repo {} {
-    variable tcldir
-    return [file dirname $tcldir/../..]
+    return [file dirname $home]
 }
 
 # Initializes the project by including the universal files as a dependency,
 # then reading the project sources.
 proc rktcpu_rv_tools::initialize {} {
-    set home [rktcpu_rv_tools::get_ip_repo]
-
     source $home/libraries/universal/tcl/universal.tcl
     rktcpu_rv_tools::read_project_sources
 }
@@ -39,8 +30,6 @@ proc rktcpu_rv_tools::read_project_sources {} {
 
 # This is a script that will read all of this IP's internal source files.
 proc rktcpu_rv_tools::read_library_sources {} {
-    set home [rktcpu_rv_tools::get_ip_repo] 
-
     # Get all Peripherals files
     add_files $home/hdl/rtl/Peripherals/BramRom.vhd
     set_property library rktcpu [get_files BramRom.vhd]

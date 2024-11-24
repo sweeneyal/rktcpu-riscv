@@ -46,6 +46,7 @@ begin
         o_iren   => iren,
         i_stall  => stall,
         o_rpc    => rpc,
+        i_ivalid => '1',
 
         i_pcwen => pcwen,
         i_pc    => pcu

@@ -69,10 +69,11 @@ begin
         i_clk    => i_clk,
         i_resetn => i_resetn,
 
-        o_pc    => o_pc,
-        o_iren  => iren,
-        i_stall => induced_stall,
-        o_rpc   => rpc,
+        o_pc     => o_pc,
+        o_iren   => iren,
+        i_stall  => induced_stall,
+        o_rpc    => rpc,
+        i_ivalid => i_ivalid,
 
         i_pcwen => pcwen,
         i_pc    => i_pc
