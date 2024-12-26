@@ -6,9 +6,7 @@
 
 RktCpu is yet another soft-core RISC-V processor based on the latest rv32ia standard. The goal of this project is to build a processor targeting Xilinx products allowing me to use it in all sorts of future projects. 
 
-## TODO
-- [x] Finish implementing a pipelined implementation of RV32I that runs simple assembly programs.
-- [x] Build a data memory model to simulate memory with.
+## Road to v1.0.0
 - [ ] Investigate adding AXI4Lite to the design.
 - [x] Add basic block rams for instruction memory and data memory.
 - [ ] Verify on hardware with a blink-led program.

@@ -30,6 +30,10 @@ proc rktcpu_rv_tools::read_project_sources {} {
 
 # This is a script that will read all of this IP's internal source files.
 proc rktcpu_rv_tools::read_library_sources {} {
+    # Get all Cores files
+    add_files $home/hdl/rtl/Cores/RktCpuDemo.vhd
+    set_property library rktcpu [get_files RktCpuDemo.vhd]
+
     # Get all Peripherals files
     add_files $home/hdl/rtl/Peripherals/BramRom.vhd
     set_property library rktcpu [get_files BramRom.vhd]

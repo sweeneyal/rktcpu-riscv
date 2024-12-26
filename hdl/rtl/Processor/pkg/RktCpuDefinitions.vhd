@@ -17,6 +17,8 @@ package RktCpuDefinitions is
     constant cMemAccessIdx : natural := 3;
     constant cWritebackIdx : natural := 4;
 
+    type region_t is array (0 to 1) of std_logic_vector(31 downto 0);
+
     type stage_t is record
         pc     : std_logic_vector(31 downto 0);
         opcode : std_logic_vector(6 downto 0);

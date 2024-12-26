@@ -1,0 +1,1 @@
+../../../../RISCV/rvtools/bin/riscv64-unknown-elf-as test008.s -o test008.elf
