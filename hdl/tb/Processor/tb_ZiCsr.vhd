@@ -76,7 +76,48 @@ begin
         test_runner_setup(runner, runner_cfg);
         while test_suite loop
             if run("t_standard") then
-                check(false);
+                resetn_i <= '0';
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+
+                resetn_i <= '1';
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+                
+                ctrl_zcsr_i.en     <= '1';
+                ctrl_zcsr_i.rs1    <= "00001";
+                ctrl_zcsr_i.rd     <= "00000";
+                ctrl_zcsr_i.funct3 <= "001";
+                ctrl_zcsr_i.itype  <= x"301";
+                ctrl_zcsr_i.mret   <= '0';
+                ctrl_zcsr_i.sret   <= '0';
+                ctrl_zcsr_i.pc     <= x"00000000";
+                opA_i              <= x"AAAAAAAA";
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+
+                ctrl_zcsr_i.en     <= '0';
+
+                wait until csrdone_o = '1';
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+
+                ctrl_zcsr_i.en     <= '1';
+                ctrl_zcsr_i.rs1    <= "00000";
+                ctrl_zcsr_i.rd     <= "00001";
+                ctrl_zcsr_i.funct3 <= "010";
+                ctrl_zcsr_i.itype  <= x"301";
+                opA_i              <= x"00000000";
+
+                wait until csrdone_o = '1';
+                check(csrr_o = x"AAAAAAAA");
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+
+                --check(false);
             elsif run("t_interrupts") then
                 check(false);
             elsif run("t_unique") then

@@ -89,7 +89,6 @@ begin
                 zicsr_engine.en    <= '0';
                 zicsr_engine.wen   <= '0';
                 zicsr_engine.wdata <= x"00000000";
-                zicsr_engine.csrr  <= x"00000000";
                 zicsr_engine.fault <= '0';
 
                 o_csrren <= '0';
@@ -197,6 +196,8 @@ begin
 
                     when others =>
                         zicsr_engine.state <= ZICSR_WAIT_FOR_INSTR;
+                        zicsr_engine.en    <= '0';
+                        zicsr_engine.wen   <= '0';
                 
                 end case;                
             end if;
@@ -247,6 +248,8 @@ begin
 
                 mcsr.mtime    <= (others => '0');
                 mcsr.mtimecmp <= (others => '0');
+
+                zicsr_engine.csrr  <= x"00000000";
             else
                 mcsr.mcycle     <= unsigned(mcsr.mcycle) + to_unsigned(1, 64);
                 mcsr.mip        <= mcsr.mie and (mcsr.mip or mip);
