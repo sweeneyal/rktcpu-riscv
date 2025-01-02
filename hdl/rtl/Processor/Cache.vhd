@@ -13,7 +13,7 @@ library rktcpu;
 
 entity Cache is
     generic (
-        cCacheableMemoryRegion : region_t := (x"00000000", x"000FFFFF")
+        cCacheableMemoryRegion : region_t := (x"00000000", x"000FFFFF");
         cCacheSize_B           : natural := 32768
     );
     port (
@@ -63,12 +63,42 @@ architecture rtl of Cache is
     constant cValid : natural := cMetaDataWidth_b - 1;
     constant cDirty : natural := cMetaDataWidth_b - 2;
 
+    type state_t is (IDLE, CACHE_FLUSH, CACHE_FLUSH_RESP, CACHE_FETCH, CACHE_FETCH_RESP);
+    signal state : state_t := IDLE;
+
     signal cacheline : std_logic_vector(cCachelineAddrWidth_b - 1 downto 0) := (others => '0');
     signal memaddr   : std_logic_vector(cMemAddrWidth_b - 1 downto 0) := (others => '0');
     signal metadata  : std_logic_vector(cMetaDataWidth_b - 1 downto 0) := (others => '0');
 
     signal wdata : std_logic_vector(31 downto 0) := (others => '0');
     signal wen   : std_logic := '0';
+
+    signal cacheline_axi : std_logic_vector(cCachelineAddrWidth_b - 1 downto 0) := (others => '0');
+    signal memaddr_axi   : std_logic_vector(cMemAddrWidth_b - 1 downto 0) := (others => '0');
+    signal cache_en      : std_logic := '0';
+    signal cache_wen     : std_logic_vector(3 downto 0) := "0000";
+
+    signal bus_rdata : std_logic_vector(31 downto 0);
+    signal rvalid    : std_logic := '0';
+
+    signal miss  : std_logic := '0';
+    signal enb   : std_logic := '0';
+    signal wenb  : std_logic := '0';
+    signal addrb : std_logic_vector(cCachelineAddrWidth_b - 1 downto 0) := (others => '0');
+
+    signal ren_reg       : std_logic := '0';
+    signal wen_reg       : std_logic_vector(3 downto 0) := "0000";
+    signal cacheline_reg : std_logic_vector(cCachelineAddrWidth_b - 1 downto 0) := (others => '0');
+    signal memaddr_reg   : std_logic_vector(cMemAddrWidth_b - 1 downto 0) := (others => '0');
+    signal old_addr      : std_logic_vector(31 downto 0) := (others => '0');
+    signal old_data      : std_logic_vector(31 downto 0) := (others => '0');
+    signal new_addr      : std_logic_vector(31 downto 0) := (others => '0');
+    signal metadata_b    : std_logic_vector(cMetaDataWidth_b - 1 downto 0) := (others => '0');
+
+    signal awready : std_logic := '0';
+    signal wready  : std_logic := '0';
+    signal resp    : std_logic_vector(1 downto 0) := "00";
+    signal update  : std_logic := '0';
 begin
     
     -- When an CACHE_FETCH occurs, we need to receive the data from the memory peripheral
@@ -79,7 +109,7 @@ begin
 
     -- Further, we need to use the AXI signaling as well as the state machine to only allow writes under
     -- specific conditions.
-    cache_en  <= i_m_axi_rvalid & bool2bit(state = CACHE_FETCH_RESP);
+    cache_en  <= i_m_axi_rvalid and bool2bit(state = CACHE_FETCH_RESP);
     cache_wen <= cache_en & cache_en & cache_en & cache_en;
 
     eBram : entity rktcpu.ByteAddrBram
@@ -163,7 +193,7 @@ begin
 
                             -- We need to preserve the old data in case we have any data to store
                             -- i.e. valid and dirty bits are set.
-                            old_data <= rdata;
+                            old_data <= bus_rdata;
 
                             -- We need to preserve the new address so that when we do a CACHE_FETCH
                             -- we get the latest data from this address.
@@ -214,7 +244,7 @@ begin
                         end if;
 
                         -- If we get both transfers complete, then we're ready to go to the response state.
-                        if ((awready and wready) or (i_m_axi_awready and i_m_axi_wready) = '1') then
+                        if (((awready and wready) or (i_m_axi_awready and i_m_axi_wready)) = '1') then
                             wready  <= '0';
                             awready <= '0';
                             state   <= CACHE_FLUSH_RESP;
