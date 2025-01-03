@@ -9,8 +9,10 @@ library universal;
 entity DualPortBram is
     generic (
         cAddressWidth_b : natural := 30;
-        cMaxAddress     : natural := 4096;
-        cDataWidth_b    : natural := 32
+        cMaxAddress     : natural := 4095;
+        cDataWidth_b    : natural := 32;
+        cVerboseMode    : boolean := false;
+        cRamID          : string  := "A"
     );
     port (
         i_clk : in std_logic;
@@ -31,15 +33,15 @@ end entity DualPortBram;
 
 architecture rtl of DualPortBram is
     function initialize (depth, datawidth : natural) return std_logic_matrix_t is
-        variable slm : std_logic_matrix_t(0 to depth - 1)(datawidth - 1 downto 0);
+        variable slm : std_logic_matrix_t(0 to depth)(datawidth - 1 downto 0);
     begin
-        for ii in 0 to depth - 1 loop
+        for ii in 0 to depth loop
             slm(ii) := (others => '0');
         end loop;
         return slm;
     end function;
 
-    shared variable ram : std_logic_matrix_t(0 to cMaxAddress - 1)(cDataWidth_b - 1 downto 0) 
+    shared variable ram : std_logic_matrix_t(0 to cMaxAddress)(cDataWidth_b - 1 downto 0) 
         := initialize(cMaxAddress, cDataWidth_b);
 begin
     
@@ -50,6 +52,9 @@ begin
                 o_rdataa <= ram(to_natural(i_addra));
                 if (i_wena = '1') then
                     ram(to_natural(i_addra)) := i_wdataa;
+                    if (cVerboseMode) then
+                        report "RAM_" & cRamID & "[" & to_hstring(i_addra) & "]=" & to_hstring(i_wdataa);
+                    end if;
                 end if;
             end if;
         end if;
@@ -62,6 +67,9 @@ begin
                 o_rdatab <= ram(to_natural(i_addrb));
                 if (i_wenb = '1') then
                     ram(to_natural(i_addrb)) := i_wdatab;
+                    if (cVerboseMode) then
+                        report "RAM_" & cRamID & "[" & to_hstring(i_addra) & "]=" & to_hstring(i_wdataa);
+                    end if;
                 end if;
             end if;
         end if;

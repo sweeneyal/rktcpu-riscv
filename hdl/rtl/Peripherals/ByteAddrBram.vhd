@@ -12,7 +12,8 @@ entity ByteAddrBram is
     generic (
         cAddressWidth_b : natural := 32;
         cMaxAddress     : natural := 4096;
-        cWordWidth_B    : natural range 1 to 8 := 4
+        cWordWidth_B    : natural range 1 to 8 := 4;
+        cVerboseMode    : boolean := false
     );
     port (
         i_clk : in std_logic;
@@ -34,6 +35,10 @@ entity ByteAddrBram is
 end entity ByteAddrBram;
 
 architecture rtl of ByteAddrBram is
+    function generate_id(idx : natural) return string is
+    begin
+        return integer'image(idx);
+    end function;
 begin
     
     gGenerateBrams: for g_ii in 0 to cWordWidth_B - 1 generate
@@ -42,7 +47,9 @@ begin
         generic map (
             cAddressWidth_b => cAddressWidth_b - 2,
             cMaxAddress     => cMaxAddress/4,
-            cDataWidth_b    => 8
+            cDataWidth_b    => 8,
+            cVerboseMode    => cVerboseMode,
+            cRamID          => generate_id(g_ii)
         ) port map (
             i_clk => i_clk,
     

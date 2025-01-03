@@ -57,18 +57,19 @@ end entity Cache;
 architecture rtl of Cache is
     constant cNumCachelines        : natural := cCacheSize_B / 4;
     constant cCachelineAddrWidth_b : natural := clog2(cCacheSize_B);
-    constant cMemAddrWidth_b       : natural := 32 - clog2(cCacheSize_B);
+    constant cMemAddrWidth_b       : natural := 32 - cCachelineAddrWidth_b;
     constant cMetaDataWidth_b      : natural := cMemAddrWidth_b + 2;
 
     constant cValid : natural := cMetaDataWidth_b - 1;
     constant cDirty : natural := cMetaDataWidth_b - 2;
 
-    type state_t is (IDLE, CACHE_FLUSH, CACHE_FLUSH_RESP, CACHE_FETCH, CACHE_FETCH_RESP);
+    type state_t is (IDLE, CACHE_FLUSH, CACHE_FLUSH_RESP, CACHE_FETCH, CACHE_FETCH_RESP, DONE);
     signal state : state_t := IDLE;
 
-    signal cacheline : std_logic_vector(cCachelineAddrWidth_b - 1 downto 0) := (others => '0');
-    signal memaddr   : std_logic_vector(cMemAddrWidth_b - 1 downto 0) := (others => '0');
-    signal metadata  : std_logic_vector(cMetaDataWidth_b - 1 downto 0) := (others => '0');
+    signal cacheline      : std_logic_vector(cCachelineAddrWidth_b - 1 downto 0) := (others => '0');
+    signal memaddr        : std_logic_vector(cMemAddrWidth_b - 1 downto 0) := (others => '0');
+    signal cacheline_meta : std_logic_vector(cCachelineAddrWidth_b - 3 downto 0) := (others => '0');
+    signal metadata       : std_logic_vector(cMetaDataWidth_b - 1 downto 0) := (others => '0');
 
     signal wdata : std_logic_vector(31 downto 0) := (others => '0');
     signal wen   : std_logic := '0';
@@ -84,7 +85,7 @@ architecture rtl of Cache is
     signal miss  : std_logic := '0';
     signal enb   : std_logic := '0';
     signal wenb  : std_logic := '0';
-    signal addrb : std_logic_vector(cCachelineAddrWidth_b - 1 downto 0) := (others => '0');
+    signal addrb : std_logic_vector(cCachelineAddrWidth_b - 3 downto 0) := (others => '0');
 
     signal ren_reg       : std_logic := '0';
     signal wen_reg       : std_logic_vector(3 downto 0) := "0000";
@@ -112,6 +113,11 @@ begin
     cache_en  <= i_m_axi_rvalid and bool2bit(state = CACHE_FETCH_RESP);
     cache_wen <= cache_en & cache_en & cache_en & cache_en;
 
+
+    -- There's an issue where the Cache is not assigning addresses properly. It's because the intra-cache
+    -- address is being handled at the top level, and not in the BRAM where it should be handled. To fix, probably
+    -- need to revert my changes to the Cacheline Address Width here, because it's fucking up the rest of the design.
+
     eBram : entity rktcpu.ByteAddrBram
     generic map (
         cAddressWidth_b => cCachelineAddrWidth_b,
@@ -137,13 +143,13 @@ begin
 
     eMetadataBram : entity rktcpu.DualPortBram
     generic map (
-        cAddressWidth_b => cCachelineAddrWidth_b,
+        cAddressWidth_b => cCachelineAddrWidth_b - 2,
         cMaxAddress     => cNumCachelines - 1,
         cDataWidth_b    => cMetaDataWidth_b
     ) port map (
         i_clk => i_clk,
 
-        i_addra  => cacheline,
+        i_addra  => cacheline_meta,
         i_ena    => i_bus_ren,
         i_wena   => '0', 
         i_wdataa => (others => '0'),
@@ -157,19 +163,26 @@ begin
     );
 
     -- It's a cache miss if the data is not valid or the data that is valid is for the wrong address.
-    miss <= bool2bit(metadata(cValid) = '0') or 
+    miss <= (bool2bit(metadata(cValid) = '0') and not any(wen_reg)) or 
         (metadata(cValid) and bool2bit(memaddr_reg /= metadata(cMemAddrWidth_b - 1 downto 0)));
 
-    cacheline    <= i_bus_addr(cCachelineAddrWidth_b - 1 downto 0);
-    memaddr      <= i_bus_addr(31 downto cCachelineAddrWidth_b);
-    o_bus_rvalid <= (rvalid and not miss) or cache_en;
-    o_bus_rdata  <= i_m_axi_rdata when cache_en else bus_rdata;
+    cacheline      <= i_bus_addr(cCachelineAddrWidth_b - 1 downto 0);
+    cacheline_meta <= i_bus_addr(cCachelineAddrWidth_b - 1 downto 2);
+    memaddr        <= i_bus_addr(31 downto cCachelineAddrWidth_b);
+    o_bus_rvalid   <= (rvalid and not miss) or cache_en;
+    o_bus_rdata    <= i_m_axi_rdata when cache_en else bus_rdata;
 
     StateMachine: process(i_clk)
     begin
         if rising_edge(i_clk) then
             if (i_resetn = '0') then
                 state <= IDLE;
+
+                o_m_axi_awvalid <= '0';
+                o_m_axi_wvalid  <= '0';
+                o_m_axi_arvalid <= '0';
+                o_m_axi_rready  <= '0';
+                o_m_axi_bready  <= '0';
             else
                 case state is
                     when IDLE =>
@@ -201,19 +214,20 @@ begin
 
                             -- If we've got our valid and dirty bits set, we need to CACHE_FLUSH then
                             -- CACHE_FETCH. Otherwise, we can skip the fetch.
-                            if ((metadata(cValid) and metadata_b(cDirty)) = '1') then
+                            if ((metadata(cValid) and metadata(cDirty)) = '1') then
                                 state <= CACHE_FLUSH;
                             else
                                 state <= CACHE_FETCH;
                             end if;
-                        elsif ((ren_reg and not miss and (wen_reg(0) or wen_reg(1) or wen_reg(2) or wen_reg(3))) = '1') then
+                        elsif ((ren_reg and any(wen_reg)) = '1') then
                             -- Or, when we don't miss but are actually writing new data, we need to update the
                             -- dirty bit for the cacheline to make sure the cache knows to flush this when
                             -- we next update.
                             metadata_b         <= metadata;
                             metadata_b(cDirty) <= '1';
+                            metadata_b(cValid) <= '1';
 
-                            addrb <= cacheline_reg;
+                            addrb <= cacheline_reg(cCachelineAddrWidth_b - 1 downto 2);
                             enb   <= '1';
                             wenb  <= '1';
                         end if;
@@ -248,15 +262,29 @@ begin
                             wready  <= '0';
                             awready <= '0';
                             state   <= CACHE_FLUSH_RESP;
+                            o_m_axi_wvalid <= '0';
+                            o_m_axi_awvalid <= '0';
+                            o_m_axi_bready <= '1';
                         end if;
 
                     when CACHE_FLUSH_RESP =>
                         -- Read the bresp and then go to cache fetch.
-                        o_m_axi_bready <= '1';
                         if (i_m_axi_bvalid = '1') then
                             resp           <= i_m_axi_bresp;
                             o_m_axi_bready <= '0';
-                            state          <= CACHE_FETCH;
+
+                            -- If we were doing a write, we can go back to IDLE after 
+                            -- updating the metadata to reflect the new data.
+                            if (any(wen_reg) = '1') then
+                                state <= DONE;
+
+                                metadata_b <= "11" & memaddr_reg;
+                                addrb <= cacheline_reg(cCachelineAddrWidth_b - 1 downto 2);
+                                enb   <= '1';
+                                wenb  <= '1';
+                            else
+                                state <= CACHE_FETCH;
+                            end if;
                         end if;
                     
                     when CACHE_FETCH =>
@@ -277,8 +305,9 @@ begin
                         -- AXI peripheral to respond.
                         if (update = '0') then
                             metadata_b <= "00" & memaddr_axi;
+                            metadata_b(cValid) <= '1';
 
-                            addrb <= cacheline_axi;
+                            addrb <= cacheline_axi(cCachelineAddrWidth_b - 1 downto 2);
                             enb   <= '1';
                             wenb  <= '1';
 
@@ -294,10 +323,21 @@ begin
                         o_m_axi_rready <= '1';
                         if (i_m_axi_rvalid = '1') then
                             resp           <= i_m_axi_rresp;
-                            o_m_axi_rready <= '0';
-                            state          <= IDLE;
+                            state          <= DONE;
+                            update         <= '0';
                         end if;
 
+                    when DONE =>
+                        o_m_axi_rready <= '0';
+
+                        state <= IDLE;
+                        enb   <= '0';
+                        wenb  <= '0';
+
+                        ren_reg       <= i_bus_ren;
+                        wen_reg       <= i_bus_wen;
+                        memaddr_reg   <= memaddr;
+                        cacheline_reg <= cacheline;
                 end case;
             end if;
         end if;
