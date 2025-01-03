@@ -90,11 +90,22 @@
     "9": {
         "Title": "Implement Cache System",
         "Description": "We need to be able to cache data in local onboard memory",
-        "Status": "Doing",
+        "Status": "Done",
         "Tag": "ARCH",
         "Creation_Date": "2024-12-23 15:00:09",
         "Due_Date": "2025-12-31 23:59:59",
         "Begin_Time": "2024-12-23 15:00:09",
+        "Complete_Time": "2025-01-03 11:20:28",
+        "Duration": 15620.32
+    },
+    "10": {
+        "Title": "Add Filtering to Cache System",
+        "Description": "Current cache does not filter requests for addresses that should not be cached, add support for cache filtering",
+        "Status": "Doing",
+        "Tag": "ARCH",
+        "Creation_Date": "2025-01-03 11:21:42",
+        "Due_Date": "2025-12-31 23:59:59",
+        "Begin_Time": "2025-01-03 11:21:42",
         "Complete_Time": "",
         "Duration": 0
     }
