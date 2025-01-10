@@ -36,7 +36,7 @@ package RktCpuDefinitions is
         valid : std_logic;
     end record stage_t;
 
-    type stages_t is array (cFetchIdx to cWritebackIdx) of stage_t;
+    type stages_t is array (cDecodeIdx to cWritebackIdx) of stage_t;
 
     function is_rs2_valid(stage : stage_t) return boolean;
 
@@ -289,41 +289,41 @@ package body RktCpuDefinitions is
                 );
                 io_stall := '1';
             else
-                io_stages(cDecodeIdx) <= io_stages(cFetchIdx);
+                io_stages(cDecodeIdx).pc     <= i_dpc;
+                io_stages(cDecodeIdx).opcode <= get_opcode(i_instr);
+                io_stages(cDecodeIdx).rd     <= get_rd(i_instr);
+                io_stages(cDecodeIdx).rs1    <= get_rs1(i_instr);
+                io_stages(cDecodeIdx).rs2    <= get_rs2(i_instr);
+                io_stages(cDecodeIdx).funct3 <= get_funct3(i_instr);
+                io_stages(cDecodeIdx).funct7 <= get_funct7(i_instr);
+                io_stages(cDecodeIdx).itype  <= get_itype(i_instr);
+                io_stages(cDecodeIdx).stype  <= get_stype(i_instr);
+                io_stages(cDecodeIdx).btype  <= get_btype(i_instr);
+                io_stages(cDecodeIdx).utype  <= get_utype(i_instr);
+                io_stages(cDecodeIdx).jtype  <= get_jtype(i_instr);
+                io_stages(cDecodeIdx).valid  <= i_dvalid;
             end if;
         end if;
 
-        if ((i_dvalid and not io_stall) = '1') then
-            io_stages(cFetchIdx).pc     <= i_dpc;
-            io_stages(cFetchIdx).opcode <= get_opcode(i_instr);
-            io_stages(cFetchIdx).rd     <= get_rd(i_instr);
-            io_stages(cFetchIdx).rs1    <= get_rs1(i_instr);
-            io_stages(cFetchIdx).rs2    <= get_rs2(i_instr);
-            io_stages(cFetchIdx).funct3 <= get_funct3(i_instr);
-            io_stages(cFetchIdx).funct7 <= get_funct7(i_instr);
-            io_stages(cFetchIdx).itype  <= get_itype(i_instr);
-            io_stages(cFetchIdx).stype  <= get_stype(i_instr);
-            io_stages(cFetchIdx).btype  <= get_btype(i_instr);
-            io_stages(cFetchIdx).utype  <= get_utype(i_instr);
-            io_stages(cFetchIdx).jtype  <= get_jtype(i_instr);
-            io_stages(cFetchIdx).valid  <= i_dvalid;
-        elsif (((not i_dvalid) and (not io_stall)) = '1') then
-            io_stages(cFetchIdx) <= (
-                pc     => x"00000000",
-                opcode => "0000000",
-                rs1    => "00000",
-                rs2    => "00000",
-                rd     => "00000",
-                funct3 => "000",
-                funct7 => "0000000",
-                itype  => x"000",
-                stype  => x"000",
-                btype  => '0' & x"000",
-                utype  => x"00000",
-                jtype  => '0' & x"00000",
-                valid  => '0'
-            );
-        end if;
+        -- if ((i_dvalid and not io_stall) = '1') then
+            
+        -- elsif (((not i_dvalid) and (not io_stall)) = '1') then
+        --     io_stages(cFetchIdx) <= (
+        --         pc     => x"00000000",
+        --         opcode => "0000000",
+        --         rs1    => "00000",
+        --         rs2    => "00000",
+        --         rd     => "00000",
+        --         funct3 => "000",
+        --         funct7 => "0000000",
+        --         itype  => x"000",
+        --         stype  => x"000",
+        --         btype  => '0' & x"000",
+        --         utype  => x"00000",
+        --         jtype  => '0' & x"00000",
+        --         valid  => '0'
+        --     );
+        -- end if;
     end procedure;
     
 end package body RktCpuDefinitions;

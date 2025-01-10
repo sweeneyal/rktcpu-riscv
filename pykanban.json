@@ -108,5 +108,38 @@
         "Begin_Time": "2025-01-03 11:21:42",
         "Complete_Time": "",
         "Duration": 0
+    },
+    "11": {
+        "Title": "Implement Branch Prediction Unit",
+        "Description": "Had an idea for a branch prediction unit that was based on a cachelike implementation - when a branch occurs, the old PC and new PC are logged so that the next time the old PC occurs, the unit will guess the new PC. If incorrect, the same as now occurs, but if correct, we don't have to drop the first few clock cycles. Would also be fun to measure the improvement as well.",
+        "Status": "Ready",
+        "Tag": "ARCH",
+        "Creation_Date": "2025-01-08 17:32:39",
+        "Due_Date": "2025-12-31 23:59:59",
+        "Begin_Time": "",
+        "Complete_Time": "",
+        "Duration": 0
+    },
+    "12": {
+        "Title": "Rearchitect Branches/Jumps to Execute Stage",
+        "Description": "Currently we have branches/jumps at the memaccess stage, move it to the execute stage to reduce cost incurred  by missed branches/jumps",
+        "Status": "Ready",
+        "Tag": "ARCH",
+        "Creation_Date": "2025-01-08 17:35:59",
+        "Due_Date": "2025-12-31 23:59:59",
+        "Begin_Time": "",
+        "Complete_Time": "",
+        "Duration": 0
+    },
+    "13": {
+        "Title": "Reduce Size of Pipeline",
+        "Description": "The pipeline is 6+ stages. This is ridiculous. Reduce it to 5 stages to reduce cost.",
+        "Status": "Done",
+        "Tag": "ARCH",
+        "Creation_Date": "2025-01-08 17:37:19",
+        "Due_Date": "2025-12-31 23:59:59",
+        "Begin_Time": "",
+        "Complete_Time": "2025-01-09 22:25:44",
+        "Duration": 0
     }
 }

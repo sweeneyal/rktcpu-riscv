@@ -62,7 +62,6 @@ begin
     --     o_instr_ren    => instr_ren,
     --     o_instr_wen    => instr_wen,
     --     o_instr_wdata  => instr_wdata,
-    --     i_instr_wready => instr_wready,
     --     i_instr_rdata  => instr_rdata,
     --     i_instr_rvalid => instr_rvalid,
 

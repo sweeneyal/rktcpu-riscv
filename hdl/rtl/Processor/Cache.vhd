@@ -238,27 +238,29 @@ begin
                         -- the AXI write data (W) channels. These will go high simultaneously,
                         -- but since the AXI spec allows for a delay between AW and W transfers in
                         -- a basic write transaction, we're allowing them to complete at different times.
+                        o_m_axi_awaddr  <= old_addr;
+                        o_m_axi_awvalid <= '1';
                         if (i_m_axi_awready = '1') then
                             awready         <= '1';
                             o_m_axi_awvalid <= '0';
-                        elsif (awready = '0') then
-                            o_m_axi_awaddr  <= old_addr;
-                            o_m_axi_awvalid <= '1';
+                        elsif (awready = '1') then
+                            o_m_axi_awvalid <= '0';
                         end if;
 
                         -- Warning, this may cause the WDATA to be accepted before the AWADDR, which
                         -- may cause bugs.
+                        o_m_axi_wdata  <= old_data;
+                        o_m_axi_wvalid <= '1';
+                        o_m_axi_wstrb  <= "1111";
                         if (i_m_axi_wready = '1') then
                             wready         <= '1';
                             o_m_axi_wvalid <= '0';
-                        elsif (wready = '0') then
-                            o_m_axi_wdata  <= old_data;
-                            o_m_axi_wvalid <= '1';
-                            o_m_axi_wstrb  <= "1111";
+                        elsif (wready = '1') then
+                            o_m_axi_wvalid <= '0';
                         end if;
 
                         -- If we get both transfers complete, then we're ready to go to the response state.
-                        if (((awready and wready) or (i_m_axi_awready and i_m_axi_wready)) = '1') then
+                        if (((awready or i_m_axi_awready) and (wready or i_m_axi_wready)) = '1') then
                             wready  <= '0';
                             awready <= '0';
                             state   <= CACHE_FLUSH_RESP;
@@ -291,12 +293,12 @@ begin
                         -- We're fetching information from the provided address,
                         -- which means we need to initiate a transaction on the address 
                         -- read (AR) side.
+                        o_m_axi_araddr  <= new_addr;
+                        o_m_axi_arvalid <= '1';
                         if (i_m_axi_arready = '1') then
                             o_m_axi_arvalid <= '0';
+                            o_m_axi_rready <= '1';
                             state <= CACHE_FETCH_RESP;
-                        else
-                            o_m_axi_araddr  <= new_addr;
-                            o_m_axi_arvalid <= '1';
                         end if;
 
                     when CACHE_FETCH_RESP =>

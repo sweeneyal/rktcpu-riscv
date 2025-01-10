@@ -84,7 +84,6 @@ begin
         o_instr_ren    => instr_ren,
         o_instr_wen    => instr_wen,
         o_instr_wdata  => instr_wdata,
-        i_instr_wready => instr_wready,
         i_instr_rdata  => instr_rdata,
         i_instr_rvalid => instr_rvalid,
 
@@ -92,7 +91,6 @@ begin
         o_data_ren    => data_ren,
         o_data_wen    => data_wen,
         o_data_wdata  => data_wdata,
-        i_data_wready => data_wready,
         i_data_rdata  => data_rdata,
         i_data_rvalid => data_rvalid,
 

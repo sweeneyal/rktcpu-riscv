@@ -26,7 +26,6 @@ entity RktCpuRiscV is
         o_instr_ren    : out std_logic;
         o_instr_wen    : out std_logic_vector(3 downto 0);
         o_instr_wdata  : out std_logic_vector(31 downto 0);
-        i_instr_wready : in std_logic;
         i_instr_rdata  : in std_logic_vector(31 downto 0);
         i_instr_rvalid : in std_logic;
 
@@ -34,7 +33,6 @@ entity RktCpuRiscV is
         o_data_ren    : out std_logic;
         o_data_wen    : out std_logic_vector(3 downto 0);
         o_data_wdata  : out std_logic_vector(31 downto 0);
-        i_data_wready : in std_logic;
         i_data_rdata  : in std_logic_vector(31 downto 0);
         i_data_rvalid : in std_logic;
 
@@ -98,7 +96,7 @@ begin
     -- Fetch and Decode Stage
     -------------------------------------------------------------------------------------------------
 
-    mvalid <= i_data_rvalid or i_data_wready;
+    mvalid <= i_data_rvalid;
 
     eControl : entity rktcpu.ControlEngine
     port map (

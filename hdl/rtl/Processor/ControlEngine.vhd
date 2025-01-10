@@ -85,7 +85,7 @@ begin
     begin
         if rising_edge(i_clk) then
             if (i_resetn = '0') then
-                for ii in cFetchIdx to cWritebackIdx loop
+                for ii in cDecodeIdx to cWritebackIdx loop
                     pipeline(ii) <= (
                         pc     => x"00000000",
                         opcode => cAluImmedOpcode,
@@ -106,7 +106,7 @@ begin
                 -- If a pc write occurs, then none of the current instructions that arent in 
                 -- writeback or possibly memaccess matter.
                 if (i_pcwen = '1') then
-                    for ii in cFetchIdx to cMemAccessIdx loop
+                    for ii in cDecodeIdx to cMemAccessIdx loop
                         pipeline(ii) <= (
                             pc     => x"00000000",
                             opcode => "0000000",
@@ -144,7 +144,7 @@ begin
                     );
 
                     o_en <= stall;
-                    induced_stall <= induce_stall(pipeline(0)) or stall;
+                    induced_stall <= induce_stall(pipeline(cDecodeIdx)) or stall;
 
                     -- Verify that i_ivalid and stall are never the same value.
                     --assert (not ((i_ivalid and stall) = '1'));
