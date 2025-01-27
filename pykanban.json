@@ -141,5 +141,16 @@
         "Begin_Time": "",
         "Complete_Time": "2025-01-09 22:25:44",
         "Duration": 0
+    },
+    "14": {
+        "Title": "Add M Extension Instructions",
+        "Description": "In order for this CPU to be useful, it needs to have a multiplier and divider unit. This gets us closer to rv32imaf, which would be pretty powerful for a multipurpose microcontroller core",
+        "Status": "Ready",
+        "Tag": "ARCH",
+        "Creation_Date": "2025-01-27 16:34:55",
+        "Due_Date": "2025-12-31 23:59:59",
+        "Begin_Time": "",
+        "Complete_Time": "",
+        "Duration": 0
     }
 }

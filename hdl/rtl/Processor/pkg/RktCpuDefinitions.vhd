@@ -135,6 +135,10 @@ package RktCpuDefinitions is
         mapc     : std_logic_vector(31 downto 0);
         valid    : std_logic;
     end record dbg_controls_t;
+
+    type mul_controls_t is record
+        uns : std_logic_vector(1 downto 0);
+    end record mul_controls_t;
     
 end package RktCpuDefinitions;
 
