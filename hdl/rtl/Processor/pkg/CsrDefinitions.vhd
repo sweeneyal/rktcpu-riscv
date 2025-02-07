@@ -158,12 +158,6 @@ package CsrDefinitions is
         mtval      : std_logic_vector(31 downto 0);
         --
         mconfigptr : std_logic_vector(31 downto 0);
-
-        -- real-time counter that increments at a constant frequency
-        mtime    : std_logic_vector(63 downto 0);
-        -- time compare register that creates a pending interrupt whenever mtime
-        -- is greater than or equal to mtimecmp
-        mtimecmp : std_logic_vector(63 downto 0);
     end record machine_csr_t;
 
     procedure handle_accesses(
@@ -382,16 +376,16 @@ package body CsrDefinitions is
                         o_rdata <= std_logic_vector(i_mcsr.mhpmcounters(hpmaddr)(63 downto 32));
                     end if;
 
-                when 16#C01# =>
-                    if (i_wen = '1') then
-                        fault := '1';
-                    else
-                        if i_mcsr.mcounteren(1) = '1' then
-                            o_rdata <= std_logic_vector(i_mcsr.mtime(31 downto 0));
-                        else
-                            -- illegal instruction exception
-                        end if;
-                    end if;
+                -- when 16#C01# =>
+                --     if (i_wen = '1') then
+                --         fault := '1';
+                --     else
+                --         if i_mcsr.mcounteren(1) = '1' then
+                --             o_rdata <= std_logic_vector(i_mcsr.mtime(31 downto 0));
+                --         else
+                --             -- illegal instruction exception
+                --         end if;
+                --     end if;
 
                 when 16#C02# =>
                     if (i_wen = '1') then
@@ -427,16 +421,16 @@ package body CsrDefinitions is
                         end if;
                     end if;
             
-                when 16#C81# =>
-                    if (i_wen = '1') then
-                        fault := '1';
-                    else
-                        if i_mcsr.mcounteren(1) = '1' then
-                            o_rdata <= std_logic_vector(i_mcsr.mtime(63 downto 32));
-                        else
-                            -- illegal instruction exception
-                        end if;
-                    end if;
+                -- when 16#C81# =>
+                --     if (i_wen = '1') then
+                --         fault := '1';
+                --     else
+                --         if i_mcsr.mcounteren(1) = '1' then
+                --             o_rdata <= std_logic_vector(i_mcsr.mtime(63 downto 32));
+                --         else
+                --             -- illegal instruction exception
+                --         end if;
+                --     end if;
 
                 when 16#C82# =>
                     if (i_wen = '1') then

@@ -16,6 +16,7 @@ library universal;
 library rktcpu;
     use rktcpu.RktCpuDefinitions.all;
     use rktcpu.RiscVDefinitions.all;
+    use rktcpu.CsrDefinitions.all;
 
 library tb;
     use tb.RiscVTbTools.all;
@@ -37,6 +38,7 @@ architecture tb of tb_ZiCsr is
     signal instret_i   : std_logic := '0';
     signal swirpt_i    : std_logic := '0';
     signal extirpt_i   : std_logic := '0';
+    signal tmrirpt_i   : std_logic := '0';
     signal irpts_i     : std_logic_vector(15 downto 0) := x"0000";
     signal irptvalid_o : std_logic := '0';
     signal irptpc_o    : std_logic_vector(31 downto 0) := x"00000000";
@@ -62,6 +64,7 @@ begin
 
         i_swirpt  => swirpt_i,
         i_extirpt => extirpt_i,
+        i_tmrirpt => tmrirpt_i,
         i_irpts   => irpts_i,
 
         o_irptvalid => irptvalid_o,
@@ -119,7 +122,72 @@ begin
 
                 --check(false);
             elsif run("t_interrupts") then
-                check(false);
+                resetn_i <= '0';
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+
+                resetn_i <= '1';
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+                
+                ctrl_zcsr_i.en     <= '1';
+                ctrl_zcsr_i.rs1    <= "00001";
+                ctrl_zcsr_i.rd     <= "00000";
+                ctrl_zcsr_i.funct3 <= "001";
+                ctrl_zcsr_i.itype  <= x"304";
+                ctrl_zcsr_i.mret   <= '0';
+                ctrl_zcsr_i.sret   <= '0';
+                ctrl_zcsr_i.pc     <= x"00000000";
+                opA_i              <= (others => '0');
+                opA_i(cMTI)        <= '1';
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+
+                ctrl_zcsr_i.en     <= '0';
+
+                wait until csrdone_o = '1';
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+                
+                ctrl_zcsr_i.en     <= '1';
+                ctrl_zcsr_i.rs1    <= "00001";
+                ctrl_zcsr_i.rd     <= "00000";
+                ctrl_zcsr_i.funct3 <= "001";
+                ctrl_zcsr_i.itype  <= x"300";
+                ctrl_zcsr_i.mret   <= '0';
+                ctrl_zcsr_i.sret   <= '0';
+                ctrl_zcsr_i.pc     <= x"00000000";
+                opA_i              <= (others => '0');
+                opA_i(cMIE)        <= '1';
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+
+                ctrl_zcsr_i.en     <= '0';
+
+                wait until csrdone_o = '1';
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+
+                tmrirpt_i <= '1';
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+                tmrirpt_i <= '0';
+
+                wait until irptvalid_o = '1';
+                check(unsigned(irptpc_o) = to_natural(x"00010000") + (7 * 4));
             elsif run("t_unique") then
                 check(false);
             end if;

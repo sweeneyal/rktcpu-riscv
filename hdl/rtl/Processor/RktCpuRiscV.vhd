@@ -348,6 +348,7 @@ begin
 
         i_swirpt  => '0',
         i_extirpt => i_extirpt,
+        i_tmrirpt => '0',
         i_irpts   => i_irpts,
 
         o_irptvalid => irptvalid,

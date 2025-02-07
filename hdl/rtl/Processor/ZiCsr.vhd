@@ -28,6 +28,7 @@ entity ZiCsr is
 
         i_swirpt  : in std_logic;
         i_extirpt : in std_logic;
+        i_tmrirpt : in std_logic;
         i_irpts   : in std_logic_vector(15 downto 0);
 
         o_irptvalid : out std_logic;
@@ -63,7 +64,9 @@ architecture rtl of ZiCsr is
     signal funct3 : std_logic_vector(2 downto 0) := "000";
     signal csraddr : std_logic_vector(11 downto 0) := x"000";
 
-    signal mip : std_logic_vector(31 downto 0) := x"00000000";
+    signal mip   : std_logic_vector(31 downto 0) := x"00000000";
+    signal mip_c : std_logic_vector(31 downto 0) := x"00000000";
+    signal mcause : std_logic_vector(30 downto 0) := (others => '0');
 
     signal irptvalid : std_logic := '0';
 
@@ -206,8 +209,13 @@ begin
 
     mip(31 downto 16) <= i_irpts;
     mip(cMEI) <= i_extirpt;
-    mip(cMTI) <= bool2bit(unsigned(mcsr.mtime) >= unsigned(mcsr.mtimecmp));
+    mip(cMTI) <= i_tmrirpt;
     mip(cMSI) <= i_swirpt;
+
+    mip_c <= mcsr.mie and (mcsr.mip or mip);
+    irptvalid <= bool2bit((mcsr.mip and mcsr.mie) /= x"00000000" and 
+                    mcsr.mstatus(cMIE) = '1');
+    mcause <= get_highest_priority_irpt(mip_c);
 
     o_mepc      <= mcsr.mepc;
     o_mepcvalid <= i_ctrl_zcsr.mret;
@@ -246,41 +254,38 @@ begin
                 -- mcsr.menvcfg    <= (others => '0');
                 -- mcsr.mseccfg    <= (others => '0');
 
-                mcsr.mtime    <= (others => '0');
-                mcsr.mtimecmp <= (others => '0');
-
                 zicsr_engine.csrr  <= x"00000000";
             else
                 mcsr.mcycle     <= unsigned(mcsr.mcycle) + to_unsigned(1, 64);
-                mcsr.mip        <= mcsr.mie and (mcsr.mip or mip);
+                mcsr.mip        <= mip_c;
+                -- set mcause to whatever is currently interrupting
                 mcsr.mcause(31) <= bool2bit(mcsr.mip /= x"00000000");
-                mcsr.mcause(30 downto 0) <= get_highest_priority_irpt(mcsr.mip);
+                mcsr.mcause(30 downto 0) <= mcause;
 
                 -- Stall this a few cycles until the irptpc is correct. This is fine, 
                 -- since cycles of delay before the interrupt takes hold just means more instructions
                 -- will be completed.
-                irptvalid <= bool2bit((mcsr.mip and mcsr.mie) /= x"00000000" and 
-                    mcsr.mstatus(cMIE) = '1');
+                
                 o_irptvalid <= irptvalid;
-                o_irptpc    <= std_logic_vector(unsigned(mcsr.mtvec) + (unsigned(mcsr.mcause(29 downto 0)) & "00"));
+                -- look up address for trap based on 4 * cause + mtvec
+                -- force PC to new address
+                o_irptpc    <= std_logic_vector(unsigned(mcsr.mtvec) + (unsigned(mcause(29 downto 0)) & "00"));
 
+                -- Add logic here to:
+                -- capture the current privilege level into a csr
                 if (irptvalid = '1') then
+                    -- turn off mie
                     mcsr.mstatus(cMIE)  <= '0';
                     mcsr.mstatus(cMPIE) <= mcsr.mstatus(cMIE);
+                    -- store the captured pc into mepc
                     mcsr.mepc           <= i_ctrl_zcsr.pc;
                 elsif (i_ctrl_zcsr.mret = '1') then
                     mcsr.mstatus(cMIE)  <= mcsr.mstatus(cMPIE);
                     mcsr.mstatus(cMPIE) <= '1';
                 end if;
 
-                -- Add logic here to:
-                -- store the captured pc into mepc
-                -- capture the current privilege level into a csr
-                -- set mcause to whatever is currently interrupting
-                -- set mtval to the fault address if it's an instruction fault
-                -- turn off mie
-                -- look up address for trap based on 4 * cause + mtvec
-                -- force PC to new address
+                -- set mtval to the fault address if it's an instruction fault, 
+                -- but since mtval is readonly 0, then I won't handle this.
 
                 if (zicsr_engine.en = '1') then
                     handle_accesses(
