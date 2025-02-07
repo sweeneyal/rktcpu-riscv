@@ -188,6 +188,38 @@ begin
 
                 wait until irptvalid_o = '1';
                 check(unsigned(irptpc_o) = to_natural(x"00010000") + (7 * 4));
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+                check(irptvalid_o = '0');
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+
+                ctrl_zcsr_i.en     <= '0';
+                ctrl_zcsr_i.rs1    <= "00001";
+                ctrl_zcsr_i.rd     <= "00000";
+                ctrl_zcsr_i.funct3 <= "001";
+                ctrl_zcsr_i.itype  <= x"300";
+                ctrl_zcsr_i.mret   <= '1';
+                ctrl_zcsr_i.sret   <= '0';
+                ctrl_zcsr_i.pc     <= x"00000000";
+
+                wait until rising_edge(clk_i);
+                wait for 100 ps;
+                check(mepcvalid_o = '1');
+                check(mepc_o = x"00000000");
+
+                ctrl_zcsr_i.en     <= '0';
+                ctrl_zcsr_i.rs1    <= "00001";
+                ctrl_zcsr_i.rd     <= "00000";
+                ctrl_zcsr_i.funct3 <= "001";
+                ctrl_zcsr_i.itype  <= x"300";
+                ctrl_zcsr_i.mret   <= '0';
+                ctrl_zcsr_i.sret   <= '0';
+                ctrl_zcsr_i.pc     <= x"00000000";
+
+
             elsif run("t_unique") then
                 check(false);
             end if;
